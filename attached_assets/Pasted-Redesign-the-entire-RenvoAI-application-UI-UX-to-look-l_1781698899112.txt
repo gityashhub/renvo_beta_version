@@ -1,0 +1,86 @@
+Redesign the entire RenvoAI application UI/UX to look like a modern enterprise-grade SaaS platform comparable to Zoho, Microsoft 365, Google Cloud Console, Notion, Linear, and SAP Fiori.
+
+Requirements:
+
+1. Design System
+- Create a consistent design system with typography, spacing, colors, shadows, borders, and component hierarchy.
+- Use a clean professional color palette:
+  - Primary: #2563EB
+  - Success: #16A34A
+  - Warning: #F59E0B
+  - Error: #DC2626
+  - Neutral grays for backgrounds and text.
+- Use Inter font throughout the application.
+- Rounded corners should be subtle (6-8px).
+- Avoid flashy gradients and excessive animations.
+
+2. Layout
+- Create a professional SaaS layout with:
+  - Fixed left sidebar navigation
+  - Top header bar
+  - Main content area
+  - User profile section
+  - Notifications area
+- Sidebar should be collapsible.
+- Navigation should be grouped logically.
+
+3. Dashboard
+- Build an executive dashboard showing:
+  - Total Datasets Processed
+  - Data Quality Score
+  - Cleaning Tasks Completed
+  - Active Projects
+  - Recent Activity
+- Use professional KPI cards.
+- Include charts and analytics sections.
+- Add empty states and loading states.
+
+4. Data Cleaning Module
+- Create a professional workspace similar to Microsoft Excel + Google Data Studio.
+- Dataset preview should be presented in a modern table.
+- Column analysis should use clean cards.
+- Data quality issues should be displayed in a priority panel.
+- Add filters, search, sorting, and pagination.
+
+5. AI Assistant
+- Create a Copilot-style AI assistant panel.
+- Floating AI assistant should feel similar to Microsoft Copilot.
+- Display conversations in modern chat bubbles.
+- Show AI suggestions, recommendations, and actions.
+
+6. Visual Hierarchy
+- Improve spacing throughout the application.
+- Remove clutter.
+- Ensure every screen follows enterprise UX standards.
+- Prioritize readability and information architecture.
+
+7. Components
+- Professional buttons
+- Data tables
+- Forms
+- Modals
+- Tooltips
+- Dropdowns
+- Tabs
+- Progress indicators
+- Status badges
+- Skeleton loaders
+
+8. Responsiveness
+- Fully responsive for desktop, tablet, and mobile.
+- Enterprise desktop experience should be prioritized.
+
+9. Accessibility
+- Proper contrast ratios.
+- Keyboard navigation.
+- Accessible forms and tables.
+
+10. Code Quality
+- Create reusable React components.
+- Use Tailwind CSS.
+- Organize components into a scalable folder structure.
+- Remove duplicate styling.
+- Follow production-level coding practices.
+
+11. Final Goal
+RenvoAI should feel like a premium B2B SaaS product used by data analysts, researchers, enterprises, and government organizations. The interface should communicate trust, intelligence, professionalism, scalability, and enterprise readiness.
