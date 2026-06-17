@@ -1,0 +1,2 @@
+- [React+FastAPI port setup](react-fastapi-port.md) — Replit webview requires port 5000; serve React static build through FastAPI (not Vite dev server) to avoid port conflicts with Streamlit.
+- [Data Cleaning page pattern](data-cleaning-pages.md) — backend routers use `push_undo(sid)` before mutations; pages return 404 "No dataset loaded" when session has no data (expected on page mount before upload).
