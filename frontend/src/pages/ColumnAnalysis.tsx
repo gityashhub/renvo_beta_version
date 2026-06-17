@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAllAnalysis, analyzeColumn, getDistribution } from '../api/cleaning'
 import { getColumnTypes } from '../api/dataset'
-import { Button, Card, Alert, MetricCard, SectionHeader, Divider } from '../components/ui'
+import { Button, Card, Alert, MetricCard, SectionHeader, Badge, Tabs, ProgressBar } from '../components/ui'
 import DatasetBanner from '../components/DatasetBanner'
+import { CheckCircle2, AlertTriangle, Search, Database } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global { interface Window { Plotly: any } }
@@ -22,9 +23,15 @@ interface Analysis {
 }
 
 function qualityColor(score: number) {
-  if (score >= 80) return 'var(--success)'
-  if (score >= 60) return 'var(--warning)'
-  return 'var(--error)'
+  if (score >= 80) return '#059669' // emerald-600
+  if (score >= 60) return '#d97706' // amber-600
+  return '#ef4444' // red-500
+}
+
+function getBadgeVariant(score: number): 'success' | 'warning' | 'error' {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  return 'error'
 }
 
 function PlotlyChart({ chartJson }: { chartJson: Record<string, unknown> | null }) {
@@ -36,7 +43,13 @@ function PlotlyChart({ chartJson }: { chartJson: Record<string, unknown> | null 
       if (window.Plotly && ref.current) {
         try {
           const { data, layout } = chartJson as { data: unknown[]; layout: unknown }
-          window.Plotly.newPlot(ref.current, data ?? [], layout ?? {}, { responsive: true, displayModeBar: false })
+          window.Plotly.newPlot(ref.current, data ?? [], {
+            ...(layout as any ?? {}),
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { family: 'Inter, sans-serif' },
+            margin: { t: 20, r: 20, b: 40, l: 40 }
+          }, { responsive: true, displayModeBar: false })
         } catch {}
       }
     }, 100)
@@ -49,8 +62,12 @@ function PlotlyChart({ chartJson }: { chartJson: Record<string, unknown> | null 
   }, [chartJson])
 
   return (
-    <div ref={ref} style={{ width: '100%', minHeight: 300 }}>
-      {!window.Plotly && <div style={{ fontSize: 13, color: 'var(--neutral-400)', textAlign: 'center', padding: 40 }}>Loading chart…</div>}
+    <div ref={ref} className="w-full min-h-[350px]">
+      {!window.Plotly && (
+        <div className="flex items-center justify-center h-[350px] text-slate-400 text-sm">
+          Loading chart...
+        </div>
+      )}
     </div>
   )
 }
@@ -63,6 +80,7 @@ export default function ColumnAnalysis() {
   const [chartJson, setChartJson] = useState<Record<string, unknown> | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [loadingDist, setLoadingDist] = useState(false)
+  const [activeTab, setActiveTab] = useState(0)
 
   const showAlert = (type: AlertKind, msg: string) => {
     setAlert({ type, message: msg })
@@ -93,6 +111,7 @@ export default function ColumnAnalysis() {
   const handleSelectCol = useCallback(async (col: string) => {
     setSelectedCol(col)
     setChartJson(null)
+    setActiveTab(0)
     if (allAnalysis[col]) {
       setLoadingDist(true)
       try {
@@ -126,179 +145,290 @@ export default function ColumnAnalysis() {
     return String(v)
   }
 
+  const tabs = ["Overview", "Missing Values", "Outliers", "Recommendations"]
+
   return (
-    <div style={{ padding: 32, maxWidth: 1200, display: 'flex', gap: 24 }}>
-      {/* ── LEFT PANEL ── */}
-      <div style={{ width: 220, flexShrink: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--neutral-600)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Columns</div>
-        <div style={{ fontSize: 11, color: 'var(--neutral-400)', marginBottom: 8 }}>Sorted by quality score ↑</div>
-        <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-          {sortedCols.map(col => {
-            const a = allAnalysis[col]
-            const score = a?.data_quality?.score
-            return (
-              <div key={col}
-                onClick={() => handleSelectCol(col)}
-                style={{
-                  padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 4,
-                  background: selectedCol === col ? 'var(--primary-light)' : 'transparent',
-                  border: selectedCol === col ? '1px solid var(--primary)' : '1px solid transparent',
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--neutral-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col}</div>
-                {score !== undefined
-                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: qualityColor(score), flexShrink: 0 }} />
-                    <div style={{ fontSize: 11, color: 'var(--neutral-500)' }}>{score}%</div>
-                  </div>
-                  : <div style={{ fontSize: 11, color: 'var(--neutral-400)', marginTop: 2 }}>Not analyzed</div>
-                }
-              </div>
-            )
-          })}
-        </div>
+    <div className="p-8 max-w-6xl mx-auto space-y-8 min-h-screen bg-slate-50">
+      <div>
+        <SectionHeader 
+          title="Column Analysis" 
+          subtitle="Deep statistical analysis and quality assessment per column"
+        />
+        <DatasetBanner />
       </div>
 
-      {/* ── RIGHT PANEL ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 26, marginBottom: 4 }}>📊 Column Analysis</h1>
-          <p style={{ color: 'var(--neutral-500)', fontSize: 14, marginBottom: 16 }}>Per-column statistical profiling and quality scoring.</p>
-          <DatasetBanner />
-        </div>
-        {alert && <div style={{ marginBottom: 16 }}><Alert type={alert.type} message={alert.message} /></div>}
+      {alert && <Alert type={alert.type} message={alert.message} className="mb-6" />}
 
-        {!selectedCol && (
-          <Card style={{ textAlign: 'center', padding: 48 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>👈</div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Select a column</div>
-            <div style={{ color: 'var(--neutral-500)', fontSize: 14 }}>Choose a column from the left panel, then click Analyze to view detailed statistics.</div>
-          </Card>
-        )}
-
-        {selectedCol && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedCol}</div>
-              {analysis && (
-                <div style={{ padding: '4px 10px', borderRadius: 99, fontSize: 13, fontWeight: 600, background: qualityColor(dq.score) + '22', color: qualityColor(dq.score) }}>
-                  {dq.score}/100 ({dq.grade})
-                </div>
-              )}
-              <Button onClick={() => handleAnalyze(selectedCol)} loading={analyzing} style={{ marginLeft: 'auto' }}>
-                🔍 {analysis ? 'Re-analyze' : 'Analyze'}
-              </Button>
+      <div className="grid grid-cols-12 gap-8">
+        {/* Left Column List */}
+        <div className="col-span-12 lg:col-span-4">
+          <Card className="flex flex-col h-full max-h-[800px]">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Select Column</h3>
             </div>
-
-            {!analysis && !analyzing && (
-              <Alert type="info" message={`Click "Analyze" to run statistical analysis on '${selectedCol}'.`} />
+            <div className="overflow-y-auto flex-1 p-2 space-y-1">
+              {sortedCols.map(col => {
+                const a = allAnalysis[col]
+                const score = a?.data_quality?.score
+                const isSelected = selectedCol === col
+                return (
+                  <button
+                    key={col}
+                    onClick={() => handleSelectCol(col)}
+                    className={`w-full text-left p-3 rounded-md transition-all border-l-[3px] ${
+                      isSelected 
+                        ? 'bg-blue-50 border-blue-600' 
+                        : 'border-transparent hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-sm font-semibold truncate ${isSelected ? 'text-blue-700' : 'text-slate-900'}`}>
+                        {col}
+                      </span>
+                      {score !== undefined && (
+                        <Badge variant={getBadgeVariant(score)}>
+                          {score}%
+                        </Badge>
+                      )}
+                    </div>
+                    {score !== undefined ? (
+                      <ProgressBar value={score} color={qualityColor(score)} className="h-1" />
+                    ) : (
+                      <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Not analyzed</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {selectedCol && (
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                <Button 
+                  onClick={() => handleAnalyze(selectedCol)} 
+                  loading={analyzing} 
+                  className="w-full"
+                  variant="primary"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {analysis ? 'Re-analyze Column' : 'Analyze Column'}
+                </Button>
+              </div>
             )}
+          </Card>
+        </div>
 
-            {analysis && (
-              <>
-                {dq.issues.length > 0 && (
-                  <Card style={{ marginBottom: 16, borderColor: 'var(--warning)' }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8 }}>⚠️ Quality Issues</div>
-                    {dq.issues.map((issue, i) => <div key={i} style={{ fontSize: 13, color: 'var(--neutral-700)', marginBottom: 4 }}>• {issue}</div>)}
-                  </Card>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-                  <MetricCard label="Total Values" value={n(bi.count)} icon="🔢" />
-                  <MetricCard label="Missing" value={n(bi.missing_count)} icon="❓" />
-                  <MetricCard label="Missing %" value={`${typeof bi.missing_percentage === 'number' ? bi.missing_percentage.toFixed(1) : 'N/A'}%`} icon="📊" />
-                  <MetricCard label="Unique Values" value={n(bi.unique_count)} icon="🔑" />
+        {/* Right Detail Panel */}
+        <div className="col-span-12 lg:col-span-8">
+          {!selectedCol ? (
+            <Card className="flex flex-col items-center justify-center p-12 text-center space-y-4">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
+                <Database className="w-8 h-8 text-slate-300" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Select a column</h3>
+                <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                  Choose a column from the list to view its statistical profile and quality score.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <Card className="p-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-slate-900">Column: {selectedCol}</h2>
+                    {analysis && (
+                      <Badge variant={getBadgeVariant(dq.score)} className="text-sm px-3 py-1">
+                        Grade {dq.grade}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
-                {bi.mean !== undefined && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-                    <MetricCard label="Mean" value={n(bi.mean)} icon="📈" />
-                    <MetricCard label="Median" value={n(bi.median)} icon="📉" />
-                    <MetricCard label="Std Dev" value={n(bi.std)} icon="📐" />
-                    <MetricCard label="Range" value={`${n(bi.min)} – ${n(bi.max)}`} icon="↔️" />
+                {analysis ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="text-center">
+                        <div className="text-4xl font-black text-slate-900">{dq.score}</div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Quality Score</div>
+                      </div>
+                      <div className="flex-1">
+                        <ProgressBar value={dq.score} color={qualityColor(dq.score)} className="h-3" />
+                        <p className="text-sm text-slate-600 mt-2">
+                          {dq.issues.length > 0 
+                            ? `Identified ${dq.issues.length} potential issues in this column.` 
+                            : 'This column meets all quality standards.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+
+                    <div className="mt-6">
+                      {activeTab === 0 && (
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <MetricCard label="Total Values" value={n(bi.count)} icon="🔢" />
+                            <MetricCard label="Missing" value={n(bi.missing_count)} icon="❓" />
+                            <MetricCard label="Missing %" value={`${typeof bi.missing_percentage === 'number' ? bi.missing_percentage.toFixed(1) : 'N/A'}%`} icon="📊" />
+                            <MetricCard label="Unique Values" value={n(bi.unique_count)} icon="🔑" />
+                          </div>
+                          
+                          {bi.mean !== undefined && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <MetricCard label="Mean" value={n(bi.mean)} icon="📈" />
+                              <MetricCard label="Median" value={n(bi.median)} icon="📉" />
+                              <MetricCard label="Std Dev" value={n(bi.std)} icon="📐" />
+                              <MetricCard label="Range" value={`${n(bi.min)} – ${n(bi.max)}`} icon="↔️" />
+                            </div>
+                          )}
+
+                          <Card className="overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                              <h4 className="text-sm font-semibold text-slate-700">Distribution</h4>
+                            </div>
+                            <div className="p-4">
+                              {loadingDist ? (
+                                <div className="flex items-center justify-center h-[350px] text-slate-400 text-sm">Loading chart...</div>
+                              ) : chartJson ? (
+                                <PlotlyChart chartJson={chartJson} />
+                              ) : (
+                                <div className="flex items-center justify-center h-[350px] text-slate-400 text-sm italic">No distribution data available</div>
+                              )}
+                            </div>
+                          </Card>
+
+                          {da.type === 'numeric' && (
+                            <Card className="p-6">
+                              <h4 className="text-sm font-semibold text-slate-700 mb-4">Statistical Shape</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-1">
+                                  <div className="text-xs text-slate-500 font-medium">Skewness</div>
+                                  <div className="text-xl font-bold text-slate-900">{typeof da.skewness === 'number' ? (da.skewness as number).toFixed(3) : 'N/A'}</div>
+                                  <Badge variant={(Math.abs(da.skewness as number) < 0.5) ? 'success' : (Math.abs(da.skewness as number) < 1) ? 'warning' : 'error'} className="mt-1">
+                                    {(Math.abs(da.skewness as number) < 0.5) ? 'Approx. Normal' : (Math.abs(da.skewness as number) < 1) ? 'Mod. Skewed' : 'Highly Skewed'}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-slate-500 font-medium">Kurtosis</div>
+                                  <div className="text-xl font-bold text-slate-900">{typeof da.kurtosis === 'number' ? (da.kurtosis as number).toFixed(3) : 'N/A'}</div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-slate-500 font-medium">Normality (Shapiro-Wilk)</div>
+                                  <div className={`text-sm font-semibold ${(da.normality_test as any)?.is_normal ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                    {(da.normality_test as any)?.is_normal ? 'Passed (Normal)' : 'Failed (Non-Normal)'}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono">p-value: {typeof (da.normality_test as any)?.shapiro_p === 'number' ? (da.normality_test as any).shapiro_p.toFixed(4) : 'N/A'}</div>
+                                </div>
+                              </div>
+                            </Card>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 1 && (
+                        <div className="space-y-4">
+                          {ma.total_missing === 0 ? (
+                            <Alert type="success" message="No missing values detected in this column." />
+                          ) : (
+                            <>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <MetricCard label="Total Missing" value={n(ma.total_missing)} icon="❓" />
+                                <MetricCard label="Missing %" value={`${typeof ma.percentage === 'number' ? (ma.percentage as number).toFixed(2) : 'N/A'}%`} icon="📊" />
+                                <MetricCard label="Pattern" value={String(ma.pattern_type ?? 'unknown')} icon="🔍" />
+                              </div>
+                              <Card className="p-4 bg-amber-50/50 border-amber-100">
+                                <h4 className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
+                                  <AlertTriangle className="w-4 h-4" /> Missing Data Pattern
+                                </h4>
+                                <p className="text-sm text-amber-700">
+                                  The identified pattern is <strong>{String(ma.pattern_type ?? 'unknown')}</strong>. 
+                                  Check recommendations for how to handle these gaps.
+                                </p>
+                              </Card>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 2 && (
+                        <div className="space-y-4">
+                          {Object.keys(oa.method_results ?? {}).length === 0 ? (
+                            <Alert type="info" message="Outlier detection is not applicable for this data type." />
+                          ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                              {Object.entries(oa.method_results).map(([key, r]) => {
+                                const res = r as any
+                                if (res.note) return (
+                                  <div key={key} className="p-4 bg-slate-50 rounded-lg text-sm text-slate-500 italic">
+                                    {res.note}
+                                  </div>
+                                )
+                                return (
+                                  <MetricCard
+                                    key={key}
+                                    label={`${res.method} Result`}
+                                    value={`${n(res.outlier_count)} outliers`}
+                                    sub={`${typeof res.outlier_percentage === 'number' ? res.outlier_percentage.toFixed(1) : '0'}% of data`}
+                                    icon={(res.outlier_count as number) > 0 ? <AlertTriangle className="text-amber-500" /> : <CheckCircle2 className="text-emerald-500" />}
+                                  />
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 3 && (
+                        <div className="space-y-4">
+                          {cr.length === 0 ? (
+                            <Alert type="success" message="Everything looks good! No specific cleaning actions recommended." />
+                          ) : (
+                            <div className="space-y-3">
+                              {cr.map((rec, i) => (
+                                <div key={i} className="flex items-start gap-4 p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
+                                  <div className="mt-1 shrink-0">
+                                    {rec.toLowerCase().includes('missing') || rec.toLowerCase().includes('outlier') 
+                                      ? <AlertTriangle className="w-5 h-5 text-amber-500" /> 
+                                      : <CheckCircle2 className="w-5 h-5 text-blue-500" />}
+                                  </div>
+                                  <p className="text-sm text-slate-700 leading-relaxed font-medium">{rec}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {dq.issues.length > 0 && (
+                            <div className="mt-8">
+                              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Known Data Issues</h4>
+                              <div className="space-y-2">
+                                {dq.issues.map((issue, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                                    {issue}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-12 text-center">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                      <Search className="w-6 h-6" />
+                    </div>
+                    <p className="text-slate-600 mb-6">Click the analyze button to generate statistical insights for this column.</p>
+                    <Button onClick={() => handleAnalyze(selectedCol)} loading={analyzing} size="lg">
+                      Start Analysis
+                    </Button>
                   </div>
                 )}
-
-                <Divider />
-
-                <SectionHeader title="📈 Distribution" />
-                <Card style={{ marginBottom: 20 }}>
-                  {loadingDist && <div style={{ fontSize: 13, color: 'var(--neutral-500)', textAlign: 'center', padding: 20 }}>Loading chart…</div>}
-                  {!loadingDist && chartJson && <PlotlyChart chartJson={chartJson} />}
-                  {!loadingDist && !chartJson && <div style={{ fontSize: 13, color: 'var(--neutral-400)', textAlign: 'center', padding: 20 }}>No distribution data</div>}
-                </Card>
-
-                <SectionHeader title="❌ Missing Data" />
-                <Card style={{ marginBottom: 20 }}>
-                  {ma.total_missing === 0
-                    ? <Alert type="success" message="✅ No missing values in this column!" />
-                    : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-                      <MetricCard label="Total Missing" value={n(ma.total_missing)} icon="❓" />
-                      <MetricCard label="Missing %" value={`${typeof ma.percentage === 'number' ? (ma.percentage as number).toFixed(2) : 'N/A'}%`} icon="📊" />
-                      <MetricCard label="Pattern" value={String(ma.pattern_type ?? 'unknown')} icon="🔍" />
-                    </div>
-                  }
-                </Card>
-
-                <SectionHeader title="⚡ Outlier Detection" />
-                <Card style={{ marginBottom: 20 }}>
-                  {Object.keys(oa.method_results ?? {}).length === 0
-                    ? <Alert type="info" message="Outlier detection not applicable for this column type." />
-                    : (
-                      <div>
-                        {Object.entries(oa.method_results).map(([key, r]) => {
-                          const res = r as Record<string, unknown>
-                          if (res.note) return <div key={key} style={{ fontSize: 13, color: 'var(--neutral-500)', padding: 8 }}>ℹ️ {String(res.note)}</div>
-                          return (
-                            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--neutral-100)' }}>
-                              <span style={{ fontSize: 13 }}>{String(res.method)}</span>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: (res.outlier_count as number) > 0 ? 'var(--warning)' : 'var(--success)' }}>
-                                {n(res.outlier_count)} ({typeof res.outlier_percentage === 'number' ? (res.outlier_percentage as number).toFixed(1) : '0'}%)
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  }
-                </Card>
-
-                {da.type === 'numeric' && (
-                  <>
-                    <SectionHeader title="📊 Distribution Statistics" />
-                    <Card style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 12, color: 'var(--neutral-500)', marginBottom: 4 }}>Skewness</div>
-                          <div style={{ fontSize: 18, fontWeight: 700 }}>{typeof da.skewness === 'number' ? (da.skewness as number).toFixed(3) : 'N/A'}</div>
-                          <div style={{ fontSize: 11, color: 'var(--neutral-500)' }}>{(Math.abs(da.skewness as number) < 0.5) ? '✅ Approx. Normal' : (Math.abs(da.skewness as number) < 1) ? '⚠️ Mod. Skewed' : '🔴 Highly Skewed'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, color: 'var(--neutral-500)', marginBottom: 4 }}>Kurtosis</div>
-                          <div style={{ fontSize: 18, fontWeight: 700 }}>{typeof da.kurtosis === 'number' ? (da.kurtosis as number).toFixed(3) : 'N/A'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, color: 'var(--neutral-500)', marginBottom: 4 }}>Normality Test (Shapiro)</div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{(da.normality_test as Record<string, unknown>)?.is_normal ? '✅ Normal' : '❌ Not Normal'}</div>
-                          <div style={{ fontSize: 11, color: 'var(--neutral-500)' }}>p = {typeof (da.normality_test as Record<string, unknown>)?.shapiro_p === 'number' ? ((da.normality_test as Record<string, unknown>).shapiro_p as number).toFixed(4) : 'N/A'}</div>
-                        </div>
-                      </div>
-                    </Card>
-                  </>
-                )}
-
-                {cr.length > 0 && (
-                  <>
-                    <SectionHeader title="🎯 Cleaning Recommendations" />
-                    <Card>
-                      {cr.map((rec, i) => <div key={i} style={{ fontSize: 13, padding: '6px 0', borderBottom: i < cr.length - 1 ? '1px solid var(--neutral-100)' : 'none' }}>• {rec}</div>)}
-                    </Card>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

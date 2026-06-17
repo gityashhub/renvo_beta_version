@@ -11,7 +11,7 @@ import CleaningWizard from './pages/CleaningWizard'
 export default function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'Inter, sans-serif', fontSize: 13 } }} />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -19,11 +19,11 @@ export default function App() {
           <Route path="/data-transformation" element={<DataTransformation />} />
           <Route path="/column-analysis" element={<ColumnAnalysis />} />
           <Route path="/cleaning-wizard" element={<CleaningWizard />} />
-          <Route path="/hypothesis-testing" element={<PlaceholderPage title="📋 Hypothesis Testing" description="15 statistical tests with intelligent recommendations. Coming in Phase 3." />} />
-          <Route path="/data-balancer" element={<PlaceholderPage title="⚖️ Data Balancer" description="Balance ML datasets with 14 methods including SMOTE. Coming in Phase 3." />} />
-          <Route path="/visualization" element={<PlaceholderPage title="📈 Charts" description="Interactive chart builder with 9 chart types. Coming in Phase 3." />} />
-          <Route path="/reports" element={<PlaceholderPage title="📄 Reports" description="Professional PDF reports with audit trail. Coming in Phase 3." />} />
-          <Route path="/ai-assistant" element={<PlaceholderPage title="🤖 AI Assistant" description="AI-powered data cleaning guidance via Groq. Coming in Phase 3." />} />
+          <Route path="/hypothesis-testing" element={<PlaceholderPage title="Hypothesis Testing" description="15 statistical tests with intelligent recommendations based on your data characteristics." icon="TestTube2" />} />
+          <Route path="/data-balancer" element={<PlaceholderPage title="Data Balancer" description="Balance ML datasets with 14 methods including SMOTE, NearMiss, and hybrid approaches." icon="Scale" />} />
+          <Route path="/visualization" element={<PlaceholderPage title="Charts" description="Interactive chart builder with 9 chart types and multi-column selection." icon="BarChart3" />} />
+          <Route path="/reports" element={<PlaceholderPage title="Reports" description="Professional PDF reports with modern styling, audit trail, and embedded visualizations." icon="FileText" />} />
+          <Route path="/ai-assistant" element={<PlaceholderPage title="AI Assistant" description="Context-aware guidance for data cleaning recommendations powered by Groq AI." icon="Bot" />} />
         </Routes>
       </Layout>
     </BrowserRouter>

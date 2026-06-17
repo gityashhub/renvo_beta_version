@@ -5,8 +5,10 @@ import {
   connectMySQL, connectSupabase,
 } from '../api/dataset'
 import {
-  Button, Card, Alert, MetricCard, Tabs, Input, SelectInput, Divider, SectionHeader, ProgressBar
+  Button, Card, Alert, MetricCard, Tabs, Input, SelectInput, SectionHeader, ProgressBar, Badge
 } from '../components/ui'
+import DatasetBanner from '../components/DatasetBanner'
+import { Upload, Database, Cloud, FileText, Settings, Info, Save, Play, Download, Import } from 'lucide-react'
 
 const TYPE_OPTIONS = ['continuous', 'integer', 'ordinal', 'categorical', 'binary', 'text', 'datetime', 'empty', 'unknown']
 
@@ -80,7 +82,7 @@ export default function Home() {
       loadOverview(previewRows, showInfo)
       loadColumnTypes()
     }
-  }, [hasDataset, previewRows, showInfo])
+  }, [hasDataset, previewRows, showInfo, loadOverview, loadColumnTypes])
 
   // ── File Upload ──────────────────────────────────────────────────────────
   const handleFileDrop = async (file: File) => {
@@ -199,7 +201,6 @@ export default function Home() {
     setAnalysisLoading(true)
     setAnalysisPct(0)
     try {
-      // Simulate progress while backend processes
       const interval = setInterval(() => {
         setAnalysisPct(p => Math.min(p + 8, 90))
       }, 300)
@@ -243,319 +244,389 @@ export default function Home() {
     e.target.value = ''
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: 32, maxWidth: 1200 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 4 }}>Renvo AI — Intelligent Data Cleaning Assistant</h1>
-        <p style={{ color: 'var(--neutral-500)' }}>
-          AI-powered tool designed for statistical agencies. Upload your dataset to begin.
-        </p>
+    <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
+      {/* Page Header */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Upload and configure your dataset to begin analysis.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => configInputRef.current?.click()}>
+            <Import className="h-4 w-4 mr-2" />
+            Import Config
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportConfig}>
+            <Download className="h-4 w-4 mr-2" />
+            Export Config
+          </Button>
+          <input ref={configInputRef} type="file" accept=".json" onChange={handleImportConfig} className="hidden" />
+        </div>
       </div>
 
-      {/* Key features */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 28 }}>
-        {['Individual Column Analysis', 'AI-Powered Assistance', 'Multiple Cleaning Strategies', 'Comprehensive Audit Trail', 'Statistical Rigor'].map(f => (
-          <div key={f} style={{ background: 'var(--primary-light)', borderRadius: 8, padding: '10px 12px', fontSize: 12, fontWeight: 500, color: 'var(--primary-dark)' }}>
-            ✓ {f}
-          </div>
-        ))}
-      </div>
+      {alert && <Alert type={alert.type} message={alert.message} className="mb-4" />}
 
-      {alert && <div style={{ marginBottom: 16 }}><Alert type={alert.type} message={alert.message} /></div>}
+      <DatasetBanner />
 
-      <Divider />
+      {/* Import Section */}
+      <Card className="overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <SectionHeader 
+            title="Data Import" 
+            subtitle="Connect your data source to start cleaning"
+            className="mb-0"
+          />
+        </div>
+        <div className="p-6 space-y-6">
+          <Tabs 
+            tabs={['File Upload', 'MySQL', 'Supabase']} 
+            active={tab} 
+            onChange={setTab} 
+          />
 
-      {/* ── DATA IMPORT ────────────────────────────────────────────────── */}
-      <SectionHeader title="📊 Data Import" />
-      <Tabs tabs={['📁 File Upload', '🔌 MySQL Database', '🟢 Supabase']} active={tab} onChange={setTab} />
-
-      {tab === 0 && (
-        <Card>
-          <p style={{ color: 'var(--neutral-600)', marginBottom: 16 }}>Upload a CSV or Excel file to get started:</p>
-          <div
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: '2px dashed var(--neutral-300)',
-              borderRadius: 10,
-              padding: 40,
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: 'var(--neutral-50)',
-              transition: 'border-color 0.15s',
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
-            <div style={{ fontWeight: 500, color: 'var(--neutral-700)', marginBottom: 4 }}>
-              Drop your file here or click to browse
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-400)' }}>Supported: CSV, Excel (.xlsx, .xls)</div>
-            <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFileChange} style={{ display: 'none' }} />
-          </div>
-          {filename && (
-            <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--success-light)', borderRadius: 6, fontSize: 13, color: '#065f46' }}>
-              📄 Loaded: <strong>{filename}</strong>
+          {tab === 0 && (
+            <div className="space-y-4">
+              <div
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="group border-2 border-dashed border-slate-200 rounded-lg p-12 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+              >
+                <div className="mx-auto w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Upload className="h-6 w-6" />
+                </div>
+                <div className="text-lg font-medium text-slate-900 mb-1">Drop your file here</div>
+                <div className="text-slate-500 mb-2">or click to browse</div>
+                <div className="text-xs text-slate-400">CSV, Excel (.xlsx, .xls) up to 100MB</div>
+                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFileChange} className="hidden" />
+              </div>
+              {filename && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-sm">
+                  <FileText className="h-4 w-4" />
+                  <span>Loaded: <strong>{filename}</strong></span>
+                </div>
+              )}
             </div>
           )}
-        </Card>
-      )}
 
-      {tab === 1 && (
-        <Card>
-          <h3 style={{ fontSize: 15, marginBottom: 16 }}>🔌 Connect to MySQL Database</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={labelStyle}>Host</label>
-              <Input value={mysqlForm.host} onChange={e => setMysqlForm(f => ({ ...f, host: e.target.value }))} placeholder="localhost" />
-            </div>
-            <div>
-              <label style={labelStyle}>Port</label>
-              <Input value={mysqlForm.port} onChange={e => setMysqlForm(f => ({ ...f, port: e.target.value }))} placeholder="3306" />
-            </div>
-            <div>
-              <label style={labelStyle}>Database Name</label>
-              <Input value={mysqlForm.database} onChange={e => setMysqlForm(f => ({ ...f, database: e.target.value }))} placeholder="mydb" />
-            </div>
-            <div>
-              <label style={labelStyle}>Username</label>
-              <Input value={mysqlForm.username} onChange={e => setMysqlForm(f => ({ ...f, username: e.target.value }))} placeholder="root" />
-            </div>
-            <div>
-              <label style={labelStyle}>Password</label>
-              <Input type="password" value={mysqlForm.password} onChange={e => setMysqlForm(f => ({ ...f, password: e.target.value }))} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-                <input type="checkbox" checked={mysqlForm.use_ssl} onChange={e => setMysqlForm(f => ({ ...f, use_ssl: e.target.checked }))} />
-                Use SSL Connection
-              </label>
-            </div>
-          </div>
-          <Button onClick={handleMysqlConnect} loading={mysqlLoading} fullWidth>🔗 Connect to Database</Button>
-
-          {mysqlConnected && mysqlTables.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <label style={labelStyle}>Select Table to Import</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <SelectInput value={mysqlSelectedTable} onChange={e => setMysqlSelectedTable(e.target.value)} style={{ flex: 1 }}>
-                  <option value="">-- Select a table --</option>
-                  {mysqlTables.map(t => <option key={t} value={t}>{t}</option>)}
-                </SelectInput>
-                <Button onClick={handleMysqlImport} loading={mysqlLoading} disabled={!mysqlSelectedTable}>Import</Button>
+          {tab === 1 && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input 
+                  label="Host" 
+                  value={mysqlForm.host} 
+                  onChange={e => setMysqlForm(f => ({ ...f, host: e.target.value }))} 
+                  placeholder="localhost" 
+                />
+                <Input 
+                  label="Port" 
+                  value={mysqlForm.port} 
+                  onChange={e => setMysqlForm(f => ({ ...f, port: e.target.value }))} 
+                  placeholder="3306" 
+                />
+                <Input 
+                  label="Database Name" 
+                  value={mysqlForm.database} 
+                  onChange={e => setMysqlForm(f => ({ ...f, database: e.target.value }))} 
+                  placeholder="mydb" 
+                />
+                <Input 
+                  label="Username" 
+                  value={mysqlForm.username} 
+                  onChange={e => setMysqlForm(f => ({ ...f, username: e.target.value }))} 
+                  placeholder="root" 
+                />
+                <Input 
+                  label="Password" 
+                  type="password" 
+                  value={mysqlForm.password} 
+                  onChange={e => setMysqlForm(f => ({ ...f, password: e.target.value }))} 
+                />
+                <div className="flex items-end h-9">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={mysqlForm.use_ssl} 
+                      onChange={e => setMysqlForm(f => ({ ...f, use_ssl: e.target.checked }))} 
+                    />
+                    Use SSL Connection
+                  </label>
+                </div>
               </div>
+              <Button onClick={handleMysqlConnect} loading={mysqlLoading} className="w-full md:w-auto">
+                <Database className="h-4 w-4 mr-2" />
+                Connect to Database
+              </Button>
+
+              {mysqlConnected && mysqlTables.length > 0 && (
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                      <SelectInput 
+                        label="Select Table to Import"
+                        value={mysqlSelectedTable} 
+                        onChange={e => setMysqlSelectedTable(e.target.value)}
+                        options={[{ value: '', label: '-- Select a table --' }, ...mysqlTables.map(t => ({ value: t, label: t }))]}
+                      />
+                    </div>
+                    <Button onClick={handleMysqlImport} loading={mysqlLoading} disabled={!mysqlSelectedTable} className="w-full md:w-auto">
+                      Import Table
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </Card>
-      )}
 
-      {tab === 2 && (
-        <Card>
-          <h3 style={{ fontSize: 15, marginBottom: 16 }}>🟢 Connect to Supabase</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Project URL</label>
-              <Input value={supaForm.project_url} onChange={e => setSupaForm(f => ({ ...f, project_url: e.target.value }))} placeholder="https://xxxx.supabase.co" />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Database Password</label>
-              <Input type="password" value={supaForm.db_password} onChange={e => setSupaForm(f => ({ ...f, db_password: e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <button onClick={() => setShowAdvanced(v => !v)} style={{ fontSize: 13, color: 'var(--primary)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
-              {showAdvanced ? '▲' : '▼'} Advanced Settings (Connection Pooler)
-            </button>
-            {showAdvanced && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
-                <div>
-                  <label style={labelStyle}>Custom Host</label>
-                  <Input value={supaForm.custom_host} onChange={e => setSupaForm(f => ({ ...f, custom_host: e.target.value }))} placeholder="aws-0-xxx.pooler.supabase.com" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Port</label>
-                  <Input value={supaForm.custom_port} onChange={e => setSupaForm(f => ({ ...f, custom_port: e.target.value }))} placeholder="6543" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Custom User (optional)</label>
-                  <Input value={supaForm.custom_user} onChange={e => setSupaForm(f => ({ ...f, custom_user: e.target.value }))} />
-                </div>
+          {tab === 2 && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4">
+                <Input 
+                  label="Project URL" 
+                  value={supaForm.project_url} 
+                  onChange={e => setSupaForm(f => ({ ...f, project_url: e.target.value }))} 
+                  placeholder="https://xxxx.supabase.co" 
+                />
+                <Input 
+                  label="Database Password" 
+                  type="password" 
+                  value={supaForm.db_password} 
+                  onChange={e => setSupaForm(f => ({ ...f, db_password: e.target.value }))} 
+                />
               </div>
-            )}
-          </div>
-          <Button onClick={handleSupaConnect} loading={supaLoading} fullWidth>🔗 Connect to Supabase</Button>
+              <div>
+                <button 
+                  onClick={() => setShowAdvanced(v => !v)} 
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                >
+                  {showAdvanced ? 'Hide' : 'Show'} Advanced Settings (Connection Pooler)
+                </button>
+                {showAdvanced && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                    <Input 
+                      label="Custom Host" 
+                      value={supaForm.custom_host} 
+                      onChange={e => setSupaForm(f => ({ ...f, custom_host: e.target.value }))} 
+                      placeholder="aws-0-xxx.pooler.supabase.com" 
+                    />
+                    <Input 
+                      label="Port" 
+                      value={supaForm.custom_port} 
+                      onChange={e => setSupaForm(f => ({ ...f, custom_port: e.target.value }))} 
+                      placeholder="6543" 
+                    />
+                    <Input 
+                      label="Custom User (optional)" 
+                      value={supaForm.custom_user} 
+                      onChange={e => setSupaForm(f => ({ ...f, custom_user: e.target.value }))} 
+                    />
+                  </div>
+                )}
+              </div>
+              <Button onClick={handleSupaConnect} loading={supaLoading} className="w-full md:w-auto">
+                <Cloud className="h-4 w-4 mr-2" />
+                Connect to Supabase
+              </Button>
 
-          {supaConnected && supaTables.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <label style={labelStyle}>Select Table to Import</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <SelectInput value={supaSelectedTable} onChange={e => setSupaSelectedTable(e.target.value)} style={{ flex: 1 }}>
-                  <option value="">-- Select a table --</option>
-                  {supaTables.map(t => <option key={t} value={t}>{t}</option>)}
-                </SelectInput>
-                <Button onClick={handleSupaImport} loading={supaLoading} disabled={!supaSelectedTable}>Import</Button>
-              </div>
+              {supaConnected && supaTables.length > 0 && (
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                      <SelectInput 
+                        label="Select Table to Import"
+                        value={supaSelectedTable} 
+                        onChange={e => setSupaSelectedTable(e.target.value)}
+                        options={[{ value: '', label: '-- Select a table --' }, ...supaTables.map(t => ({ value: t, label: t }))]}
+                      />
+                    </div>
+                    <Button onClick={handleSupaImport} loading={supaLoading} disabled={!supaSelectedTable} className="w-full md:w-auto">
+                      Import Table
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </Card>
-      )}
+        </div>
+      </Card>
 
-      {/* ── DATASET OVERVIEW ────────────────────────────────────────────── */}
+      {/* Dataset Overview */}
       {hasDataset && overview && (
-        <>
-          <Divider />
-
-          {/* Metrics */}
-          <SectionHeader title="📋 Dataset Overview" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-            <MetricCard label="Rows" value={overview.rows} icon="📝" />
-            <MetricCard label="Columns" value={overview.columns} icon="📐" />
-            <MetricCard label="Missing Values" value={overview.missing_values} icon="❓" />
-            <MetricCard label="Memory" value={`${overview.memory_mb} MB`} icon="💾" />
+        <div className="space-y-6">
+          <SectionHeader 
+            title="Dataset Overview" 
+            subtitle="Initial metrics and column statistics" 
+          />
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard label="Rows" value={overview.rows.toLocaleString()} icon={<FileText className="h-5 w-5 text-blue-600" />} />
+            <MetricCard label="Columns" value={overview.columns} icon={<Settings className="h-5 w-5 text-blue-600" />} />
+            <MetricCard label="Missing Values" value={overview.missing_values.toLocaleString()} icon={<Info className="h-5 w-5 text-amber-600" />} />
+            <MetricCard label="Memory" value={`${overview.memory_mb.toFixed(2)} MB`} icon={<Database className="h-5 w-5 text-emerald-600" />} />
           </div>
 
-          {/* Preview */}
-          <SectionHeader title="🔍 Data Preview" />
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 13, color: 'var(--neutral-700)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              Rows to preview:
-              <input
-                type="range"
-                min={5}
-                max={overview.max_preview_rows}
-                value={previewRows}
-                onChange={e => setPreviewRows(Number(e.target.value))}
-                style={{ width: 120 }}
+          {/* Data Preview */}
+          <Card>
+            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <SectionHeader 
+                title="Data Preview" 
+                subtitle="Explore the first few rows of your dataset"
+                className="mb-0"
               />
-              <span style={{ fontWeight: 600, minWidth: 28 }}>{previewRows}</span>
-            </label>
-            <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={showInfo} onChange={e => setShowInfo(e.target.checked)} />
-              Show column info
-            </label>
-          </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 font-medium">Show:</span>
+                  <select 
+                    value={previewRows} 
+                    onChange={e => setPreviewRows(Number(e.target.value))}
+                    className="h-8 rounded-md border-slate-200 text-sm focus:ring-blue-500"
+                  >
+                    {[5, 10, 25, 50, 100].filter(n => n <= overview.max_preview_rows).map(n => (
+                      <option key={n} value={n}>{n} rows</option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-600">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    checked={showInfo} 
+                    onChange={e => setShowInfo(e.target.checked)} 
+                  />
+                  Column Info
+                </label>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              {showInfo && overview.column_info && (
+                <div className="p-6 bg-slate-50/50 border-b border-slate-100">
+                  <div className="overflow-hidden border border-slate-200 rounded-lg bg-white">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          {['Column', 'Type', 'Non-null', 'Missing', 'Unique'].map(h => (
+                            <th key={h} className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {overview.column_info.map(ci => (
+                          <tr key={ci.column} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-4 py-2 text-sm font-medium text-slate-900">{ci.column}</td>
+                            <td className="px-4 py-2 text-sm"><code className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[11px] font-mono">{ci.dtype}</code></td>
+                            <td className="px-4 py-2 text-sm text-slate-600">{ci.non_null.toLocaleString()}</td>
+                            <td className="px-4 py-2 text-sm">
+                              {ci.missing > 0 ? (
+                                <Badge variant="error">{ci.missing.toLocaleString()}</Badge>
+                              ) : (
+                                <span className="text-slate-400">0</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-slate-600">{ci.unique.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
-          {/* Column info table */}
-          {showInfo && overview.column_info && (
-            <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-              <table style={tableStyle}>
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr>{['Column', 'Type', 'Non-null', 'Missing', 'Unique'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    {overview.column_names.map(c => (
+                      <th key={c} className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[120px]">{c}</th>
+                    ))}
+                  </tr>
                 </thead>
-                <tbody>
-                  {overview.column_info.map(ci => (
-                    <tr key={ci.column} style={{ borderBottom: '1px solid var(--neutral-100)' }}>
-                      <td style={tdStyle}><strong>{ci.column}</strong></td>
-                      <td style={tdStyle}><code style={{ fontSize: 11, background: 'var(--neutral-100)', padding: '1px 5px', borderRadius: 3 }}>{ci.dtype}</code></td>
-                      <td style={tdStyle}>{ci.non_null.toLocaleString()}</td>
-                      <td style={{ ...tdStyle, color: ci.missing > 0 ? 'var(--error)' : 'inherit' }}>{ci.missing.toLocaleString()}</td>
-                      <td style={tdStyle}>{ci.unique.toLocaleString()}</td>
+                <tbody className="divide-y divide-slate-100">
+                  {overview.preview.map((row, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      {overview.column_names.map(col => (
+                        <td key={col} className="px-4 py-2.5 text-sm text-slate-600 truncate max-w-[200px]">
+                          {row[col] === null || row[col] === undefined
+                            ? <span className="text-slate-300 italic">null</span>
+                            : String(row[col])}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          </Card>
 
-          {/* Data preview table */}
-          <div style={{ overflowX: 'auto', border: '1px solid var(--neutral-200)', borderRadius: 8 }}>
-            <table style={tableStyle}>
-              <thead>
-                <tr>{overview.column_names.map(c => <th key={c} style={thStyle}>{c}</th>)}</tr>
-              </thead>
-              <tbody>
-                {overview.preview.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--neutral-100)', background: i % 2 === 1 ? 'var(--neutral-50)' : '#fff' }}>
-                    {overview.column_names.map(col => (
-                      <td key={col} style={tdStyle}>
-                        {row[col] === null || row[col] === undefined
-                          ? <span style={{ color: 'var(--neutral-300)', fontStyle: 'italic' }}>null</span>
-                          : String(row[col])}
-                      </td>
-                    ))}
+          {/* Column Configuration */}
+          <SectionHeader 
+            title="Column Configuration" 
+            subtitle="Review and override auto-detected data types" 
+          />
+          
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Column Name</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Detected Type</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Override Type</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* ── COLUMN TYPES ───────────────────────────────────────────── */}
-          <Divider />
-          <SectionHeader title="⚙️ Column Type Configuration" subtitle="Review and update the auto-detected column types before cleaning." />
-
-          <div style={{ border: '1px solid var(--neutral-200)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
-            {/* Header row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 0, background: 'var(--neutral-100)', borderBottom: '1px solid var(--neutral-200)' }}>
-              {['Column', 'Detected Type', 'Set Type'].map(h => (
-                <div key={h} style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, color: 'var(--neutral-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</div>
-              ))}
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {overview.column_names.map((col) => (
+                    <tr key={col} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{col}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <Badge variant="info" className="font-mono">{columnTypes[col] || 'unknown'}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <select
+                          value={localTypes[col] || ''}
+                          onChange={e => setLocalTypes(prev => ({ ...prev, [col]: e.target.value }))}
+                          className="w-full h-9 rounded-md border-slate-200 text-sm focus:ring-blue-500"
+                        >
+                          {TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="group relative">
+                          <Info className="h-4 w-4 text-slate-300 cursor-help" />
+                          <div className="hidden group-hover:block absolute right-0 bottom-full mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded shadow-xl z-10">
+                            Changing this affects how cleaning algorithms treat this column.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {/* Column rows */}
-            {overview.column_names.map((col, idx) => (
-              <div
-                key={col}
-                style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr',
-                  alignItems: 'center',
-                  borderBottom: idx < overview.column_names.length - 1 ? '1px solid var(--neutral-100)' : 'none',
-                  background: idx % 2 === 1 ? 'var(--neutral-50)' : '#fff',
-                }}
-              >
-                <div style={{ padding: '8px 14px', fontWeight: 500, fontSize: 13 }}>{col}</div>
-                <div style={{ padding: '8px 14px' }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
-                    background: 'var(--primary-light)', color: 'var(--primary-dark)',
-                  }}>{columnTypes[col] ?? 'unknown'}</span>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4">
+              <Button onClick={handleUpdateTypes} loading={typesLoading}>
+                <Save className="h-4 w-4 mr-2" />
+                Apply Configuration
+              </Button>
+              <Button variant="outline" onClick={handleAnalyzeColumns} loading={analysisLoading}>
+                <Play className="h-4 w-4 mr-2" />
+                Run Column Analysis
+              </Button>
+            </div>
+            {analysisLoading && (
+              <div className="px-6 pb-6">
+                <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1">
+                  <span>Analyzing statistical properties...</span>
+                  <span>{analysisPct}%</span>
                 </div>
-                <div style={{ padding: '6px 10px' }}>
-                  <SelectInput
-                    value={localTypes[col] ?? columnTypes[col] ?? 'unknown'}
-                    onChange={e => setLocalTypes(t => ({ ...t, [col]: e.target.value }))}
-                    style={{ width: '100%', padding: '5px 8px' }}
-                  >
-                    {TYPE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                  </SelectInput>
-                </div>
+                <ProgressBar value={analysisPct} />
               </div>
-            ))}
-          </div>
-
-          {analysisLoading && analysisPct > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <ProgressBar value={analysisPct} max={100} />
-              <div style={{ fontSize: 12, color: 'var(--neutral-500)', marginTop: 4 }}>Analyzing columns… {analysisPct}%</div>
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <Button onClick={handleUpdateTypes} loading={typesLoading} variant="primary">💾 Update Column Types</Button>
-            <Button onClick={handleAnalyzeColumns} loading={analysisLoading} variant="secondary">🔍 Start Column Analysis</Button>
-          </div>
-
-          {/* ── CONFIG MANAGEMENT ──────────────────────────────────────── */}
-          <Divider />
-          <SectionHeader title="💾 Configuration Management" subtitle="Export or import your column type and cleaning history settings." />
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Button onClick={handleExportConfig} variant="outline">📤 Export Configuration</Button>
-            <Button onClick={() => configInputRef.current?.click()} variant="outline">📥 Import Configuration</Button>
-            <input ref={configInputRef} type="file" accept=".json" onChange={handleImportConfig} style={{ display: 'none' }} />
-          </div>
-        </>
-      )}
-
-      {!hasDataset && (
-        <div style={{ marginTop: 24, padding: 32, background: 'var(--neutral-50)', border: '1px solid var(--neutral-200)', borderRadius: 10, textAlign: 'center', color: 'var(--neutral-400)' }}>
-          👆 Upload a dataset to begin exploring features
+            )}
+          </Card>
         </div>
       )}
     </div>
   )
 }
-
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--neutral-600)', marginBottom: 4 }
-const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 12 }
-const thStyle: React.CSSProperties = { padding: '8px 12px', textAlign: 'left', background: 'var(--neutral-100)', fontWeight: 600, color: 'var(--neutral-600)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', position: 'sticky', top: 0 }
-const tdStyle: React.CSSProperties = { padding: '6px 12px', color: 'var(--neutral-700)', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }

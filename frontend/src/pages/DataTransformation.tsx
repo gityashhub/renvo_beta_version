@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { validateMerge, mergeColumns, splitColumn, detectJsonColumns, expandJson, columnsToJson } from '../api/cleaning'
 import { getColumnTypes } from '../api/dataset'
-import { Button, Card, Alert, Tabs, Input, SelectInput, SectionHeader, Divider } from '../components/ui'
+import { Button, Card, Alert, Tabs, Input, SelectInput, SectionHeader, Divider, Badge } from '../components/ui'
 import DatasetBanner from '../components/DatasetBanner'
+import { cn } from '../lib/utils'
+import { Check, Columns, Scissors, FileJson, Table, Search, Sparkles } from 'lucide-react'
 
 type AlertKind = 'success' | 'error' | 'info' | 'warning'
 type AlertState = { type: AlertKind; message: string } | null
-
-const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--neutral-600)', display: 'block', marginBottom: 4 }
 
 interface JsonColumn { column: string; keys: string[]; json_percentage: number; is_array: boolean; is_nested: boolean }
 
@@ -209,273 +209,430 @@ export default function DataTransformation() {
   const DT_COMPONENTS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday', 'week', 'quarter']
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 26, marginBottom: 4 }}>🔄 Data Transformation</h1>
-        <p style={{ color: 'var(--neutral-500)', fontSize: 14 }}>Merge/split columns and expand nested JSON data.</p>
+    <div className="p-8 max-w-5xl mx-auto space-y-6 bg-slate-50 min-h-screen">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Data Transformation</h2>
+        <p className="text-sm text-slate-500 mt-1">Merge, split, and expand dataset columns</p>
       </div>
 
       <DatasetBanner />
 
-      {alert && <div style={{ marginBottom: 16 }}><Alert type={alert.type} message={alert.message} /></div>}
+      {alert && <Alert type={alert.type} message={alert.message} className="mb-6" />}
 
       <Tabs tabs={['Merge / Split Columns', 'Expand JSON Data']} active={tab} onChange={setTab} />
 
       {/* ── MERGE / SPLIT ── */}
       {tab === 0 && (
-        <>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-            {(['merge', 'split'] as const).map(m => (
-              <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '8px 16px', borderRadius: 8, background: mode === m ? 'var(--primary-light)' : 'var(--neutral-100)', fontWeight: mode === m ? 600 : 400 }}>
-                <input type="radio" checked={mode === m} onChange={() => { setMode(m); setMergePreview(null) }} />
-                {m === 'merge' ? '🔀 Merge Columns' : '✂️ Split Column'}
-              </label>
-            ))}
+        <div className="space-y-6">
+          <div className="flex gap-2">
+            <Button
+              variant={mode === 'merge' ? 'primary' : 'outline'}
+              onClick={() => { setMode('merge'); setMergePreview(null) }}
+              className="flex-1"
+            >
+              <Columns className="mr-2 h-4 w-4" />
+              Merge Columns
+            </Button>
+            <Button
+              variant={mode === 'split' ? 'primary' : 'outline'}
+              onClick={() => { setMode('split'); setMergePreview(null) }}
+              className="flex-1"
+            >
+              <Scissors className="mr-2 h-4 w-4" />
+              Split Column
+            </Button>
           </div>
 
           {mode === 'merge' && (
-            <Card>
+            <Card className="p-6">
               <SectionHeader title="Merge Columns" subtitle="Combine multiple columns into one with a separator." />
-              <div style={{ marginBottom: 12 }}>
-                <label style={labelStyle}>Select columns to merge (minimum 2)</label>
-                <div style={{ border: '1px solid var(--neutral-300)', borderRadius: 6, padding: 8, maxHeight: 160, overflowY: 'auto' }}>
-                  {columns.map(col => (
-                    <label key={col} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 4, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={mergeSelected.includes(col)} onChange={() => toggleMergeCol(col)} />
-                      {col}
-                    </label>
-                  ))}
+              <div className="space-y-6">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-2 block uppercase tracking-wider">Select columns to merge (minimum 2)</label>
+                  <div className="border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-slate-50 grid grid-cols-2 gap-2">
+                    {columns.map(col => (
+                      <label key={col} className="flex items-center gap-2 p-1.5 rounded hover:bg-white transition-colors cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={mergeSelected.includes(col)}
+                          onChange={() => toggleMergeCol(col)}
+                        />
+                        <span className="text-slate-700 truncate">{col}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {mergeSelected.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      <span className="text-xs font-medium text-slate-500 mr-1 self-center">Selected:</span>
+                      {mergeSelected.map(c => (
+                        <Badge key={c} variant="info" className="text-[10px]">{c}</Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {mergeSelected.length > 0 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--primary)' }}>Selected: {mergeSelected.join(', ')}</div>}
-              </div>
-              {mergeSelected.length >= 2 && (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <label style={labelStyle}>Separator</label>
-                      <Input value={separator} onChange={e => setSeparator(e.target.value)} placeholder="-" />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>New column name</label>
-                      <Input value={newColName} onChange={e => setNewColName(e.target.value)} placeholder={`${mergeSelected.slice(0, 2).join('_')}_merged`} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Handle missing values</label>
-                      <SelectInput value={handleMissing} onChange={e => setHandleMissing(e.target.value)}>
-                        <option value="skip">Skip missing values</option>
-                        <option value="empty">Replace with empty string</option>
-                        <option value="null_string">Replace with "NULL"</option>
-                        <option value="fail">Mark row as null if any missing</option>
-                      </SelectInput>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-                        <input type="checkbox" checked={isDatetime} onChange={e => setIsDatetime(e.target.checked)} />
+
+                {mergeSelected.length >= 1 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Separator"
+                      value={separator}
+                      onChange={e => setSeparator(e.target.value)}
+                      placeholder="e.g. -, _, /"
+                    />
+                    <Input
+                      label="New Column Name"
+                      value={newColName}
+                      onChange={e => setNewColName(e.target.value)}
+                      placeholder={mergeSelected.length >= 2 ? `${mergeSelected.slice(0, 2).join('_')}_merged` : "merged_column"}
+                    />
+                    <SelectInput
+                      label="Handle Missing Values"
+                      value={handleMissing}
+                      onChange={e => setHandleMissing(e.target.value)}
+                      options={[
+                        { label: 'Skip missing values', value: 'skip' },
+                        { label: 'Replace with empty string', value: 'empty' },
+                        { label: 'Replace with "NULL"', value: 'null_string' },
+                        { label: 'Fail (mark row as null if any missing)', value: 'fail' }
+                      ]}
+                    />
+                    <div className="flex items-end pb-2">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 font-medium">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={isDatetime}
+                          onChange={e => setIsDatetime(e.target.checked)}
+                        />
                         DateTime-aware merge
                       </label>
                     </div>
                   </div>
-                  {isDatetime && (
-                    <div style={{ marginBottom: 12 }}>
-                      <label style={labelStyle}>DateTime output format</label>
-                      <Input value={datetimeFormat} onChange={e => setDatetimeFormat(e.target.value)} placeholder="%Y-%m-%d %H:%M:%S" />
+                )}
+
+                {isDatetime && (
+                  <Input
+                    label="DateTime Output Format"
+                    value={datetimeFormat}
+                    onChange={e => setDatetimeFormat(e.target.value)}
+                    placeholder="%Y-%m-%d %H:%M:%S"
+                  />
+                )}
+
+                {mergeSelected.length >= 2 ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="outline" onClick={handleValidate}>
+                        <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                        Validate
+                      </Button>
+                      <Button variant="outline" onClick={handleMergePreview} loading={loading}>
+                        <Search className="mr-2 h-4 w-4" />
+                        Preview
+                      </Button>
+                      <Button onClick={handleMergeApply} loading={loading}>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Apply Merge
+                      </Button>
                     </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                    <Button variant="secondary" onClick={handleValidate}>Validate</Button>
-                    <Button variant="secondary" onClick={handleMergePreview} loading={loading}>👁️ Preview</Button>
-                    <Button onClick={handleMergeApply} loading={loading}>✅ Apply Merge</Button>
+
+                    {validation && (
+                      <div className="space-y-2">
+                        {validation.warnings.map((w, i) => <Alert key={i} type="warning" message={w} />)}
+                        {validation.errors.map((e, i) => <Alert key={i} type="error" message={e} />)}
+                        {validation.valid && validation.warnings.length === 0 && validation.errors.length === 0 && (
+                          <Alert type="success" message="Validation passed" />
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {validation && (
-                    <div>
-                      {validation.warnings.map((w, i) => <Alert key={i} type="warning" message={w} />)}
-                      {validation.errors.map((e, i) => <Alert key={i} type="error" message={e} />)}
-                      {validation.valid && validation.warnings.length === 0 && validation.errors.length === 0 && <Alert type="success" message="✅ Validation passed" />}
-                    </div>
-                  )}
-                </>
-              )}
-              {mergeSelected.length < 2 && mergeSelected.length > 0 && <Alert type="info" message="Select at least 2 columns to merge." />}
-              {PreviewTable(mergePreview)}
+                ) : mergeSelected.length > 0 ? (
+                  <Alert type="info" message="Select at least 2 columns to merge." />
+                ) : null}
+              </div>
+              <PreviewSection data={mergePreview} />
             </Card>
           )}
 
           {mode === 'split' && (
-            <Card>
+            <Card className="p-6">
               <SectionHeader title="Split Column" subtitle="Split a single column into multiple columns." />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div>
-                  <label style={labelStyle}>Column to split</label>
-                  <SelectInput value={splitCol} onChange={e => { setSplitCol(e.target.value); setSplitPrefix(e.target.value); setMergePreview(null) }}>
-                    <option value="">-- Select column --</option>
-                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                  </SelectInput>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <SelectInput
+                    label="Column to Split"
+                    value={splitCol}
+                    onChange={e => { setSplitCol(e.target.value); setSplitPrefix(e.target.value); setMergePreview(null) }}
+                    options={['-- Select column --', ...columns]}
+                  />
+                  <div className="flex items-end pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 font-medium">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        checked={isDtSplit}
+                        onChange={e => setIsDtSplit(e.target.checked)}
+                      />
+                      DateTime split (extract components)
+                    </label>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-                    <input type="checkbox" checked={isDtSplit} onChange={e => setIsDtSplit(e.target.checked)} />
-                    DateTime split (extract components)
-                  </label>
-                </div>
+
+                {splitCol && !isDtSplit && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Separator"
+                      value={splitSep}
+                      onChange={e => setSplitSep(e.target.value)}
+                      placeholder="-"
+                    />
+                    <Input
+                      label="New Column Prefix"
+                      value={splitPrefix}
+                      onChange={e => setSplitPrefix(e.target.value)}
+                      placeholder={splitCol}
+                    />
+                  </div>
+                )}
+
+                {splitCol && isDtSplit && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block">DateTime components to extract</label>
+                    <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      {DT_COMPONENTS.map(c => (
+                        <label key={c} className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-200 rounded text-sm cursor-pointer hover:border-blue-300 transition-colors">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            checked={dtComponents.includes(c)}
+                            onChange={() => toggleDtComponent(c)}
+                          />
+                          <span className="text-slate-700">{c}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {splitCol && (
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={handleSplitPreview} loading={loading}>
+                      <Search className="mr-2 h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button onClick={handleSplitApply} loading={loading}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Apply Split
+                    </Button>
+                  </div>
+                )}
               </div>
-              {splitCol && !isDtSplit && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Separator</label>
-                    <Input value={splitSep} onChange={e => setSplitSep(e.target.value)} placeholder="-" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>New column prefix</label>
-                    <Input value={splitPrefix} onChange={e => setSplitPrefix(e.target.value)} placeholder={splitCol} />
-                  </div>
-                </div>
-              )}
-              {splitCol && isDtSplit && (
-                <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>DateTime components to extract</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {DT_COMPONENTS.map(c => (
-                      <label key={c} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={dtComponents.includes(c)} onChange={() => toggleDtComponent(c)} />
-                        {c}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {splitCol && (
-                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <Button variant="secondary" onClick={handleSplitPreview} loading={loading}>👁️ Preview</Button>
-                  <Button onClick={handleSplitApply} loading={loading}>✅ Apply Split</Button>
-                </div>
-              )}
-              {PreviewTable(mergePreview)}
+              <PreviewSection data={mergePreview} />
             </Card>
           )}
-        </>
+        </div>
       )}
 
       {/* ── JSON ── */}
       {tab === 1 && (
-        <>
-          <Tabs tabs={['Expand JSON to Columns', 'Convert Columns to JSON']} active={jsonTab} onChange={setJsonTab} />
+        <div className="space-y-6">
+          <Tabs tabs={['Expand Keys', 'Combine to JSON']} active={jsonTab} onChange={setJsonTab} />
 
           {jsonTab === 0 && (
-            <Card>
-              <SectionHeader title="Expand JSON/Dictionary Columns" />
-              <Button variant="secondary" onClick={handleDetectJson} loading={loading} style={{ marginBottom: 16 }}>
-                🔍 Detect JSON Columns
-              </Button>
-              {jsonDetected && jsonColumns.length === 0 && <Alert type="info" message="No JSON/dictionary columns detected in the dataset." />}
+            <Card className="p-6">
+              <SectionHeader
+                title="Expand JSON Data"
+                subtitle="Extract keys from JSON columns into new columns."
+                action={
+                  <Button variant="outline" onClick={handleDetectJson} loading={loading}>
+                    <FileJson className="mr-2 h-4 w-4 text-blue-600" />
+                    Detect JSON Columns
+                  </Button>
+                }
+              />
+
+              {jsonDetected && jsonColumns.length === 0 && (
+                <Alert type="info" message="No JSON/dictionary columns detected in the dataset." />
+              )}
+
               {jsonColumns.length > 0 && (
-                <>
-                  <Alert type="success" message={`Found ${jsonColumns.length} column(s) with JSON data`} />
-                  <div style={{ marginTop: 16 }}>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {jsonColumns.map(col => (
-                      <div key={col.column} style={{ border: '1px solid var(--neutral-200)', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{col.column}</div>
-                        <div style={{ fontSize: 12, color: 'var(--neutral-500)', marginTop: 4 }}>
-                          {col.json_percentage.toFixed(1)}% JSON · {col.is_array ? '📋 Array' : '📦 Object'}
-                          · Keys: {col.keys.slice(0, 10).join(', ')}{col.keys.length > 10 ? '...' : ''}
+                      <div
+                        key={col.column}
+                        className={cn(
+                          "border rounded-lg p-3 transition-all cursor-pointer",
+                          selectedJsonCol === col.column ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "border-slate-200 hover:border-slate-300 bg-white"
+                        )}
+                        onClick={() => {
+                          setSelectedJsonCol(col.column)
+                          setJsonPrefix(col.column)
+                          setSelectedKeys(col.keys.slice(0, 3))
+                          setJsonPreview(null)
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-slate-900 truncate">{col.column}</span>
+                          <Badge variant={col.is_array ? 'info' : 'success'} className="text-[10px]">
+                            {col.is_array ? 'Array' : 'Object'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-slate-500 space-y-1">
+                          <p>{col.json_percentage.toFixed(1)}% JSON coverage</p>
+                          <p className="truncate">Keys: {col.keys.slice(0, 3).join(', ')}{col.keys.length > 3 ? '...' : ''}</p>
                         </div>
                       </div>
                     ))}
                   </div>
+
                   <Divider />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <label style={labelStyle}>Select JSON column</label>
-                      <SelectInput value={selectedJsonCol} onChange={e => {
-                        setSelectedJsonCol(e.target.value)
-                        setJsonPrefix(e.target.value)
-                        const found = jsonColumns.find(c => c.column === e.target.value)
-                        if (found) setSelectedKeys(found.keys.slice(0, 3))
-                        setJsonPreview(null)
-                      }}>
-                        {jsonColumns.map(c => <option key={c.column} value={c.column}>{c.column}</option>)}
-                      </SelectInput>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Column prefix</label>
-                      <Input value={jsonPrefix} onChange={e => setJsonPrefix(e.target.value)} />
-                    </div>
-                  </div>
-                  {selectedJsonCol && (() => {
-                    const found = jsonColumns.find(c => c.column === selectedJsonCol)
-                    return found ? (
-                      <div style={{ marginBottom: 12 }}>
-                        <label style={labelStyle}>Keys to extract</label>
-                        <div style={{ border: '1px solid var(--neutral-300)', borderRadius: 6, padding: 8, maxHeight: 160, overflowY: 'auto' }}>
-                          {found.keys.map(k => (
-                            <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 4, cursor: 'pointer' }}>
-                              <input type="checkbox" checked={selectedKeys.includes(k)} onChange={e => setSelectedKeys(prev => e.target.checked ? [...prev, k] : prev.filter(x => x !== k))} />
-                              {k}
+
+                  {selectedJsonCol && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          label="Column Prefix"
+                          value={jsonPrefix}
+                          onChange={e => setJsonPrefix(e.target.value)}
+                        />
+                        <div className="flex items-end pb-2">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 font-medium">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              checked={explodeArrays}
+                              onChange={e => setExplodeArrays(e.target.checked)}
+                            />
+                            Explode arrays into separate rows
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-2">Keys to Extract</label>
+                        <div className="border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-slate-50 grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {jsonColumns.find(c => c.column === selectedJsonCol)?.keys.map(k => (
+                            <label key={k} className="flex items-center gap-2 p-1.5 rounded hover:bg-white transition-colors cursor-pointer text-sm">
+                              <input
+                                type="checkbox"
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                checked={selectedKeys.includes(k)}
+                                onChange={e => setSelectedKeys(prev => e.target.checked ? [...prev, k] : prev.filter(x => x !== k))}
+                              />
+                              <span className="text-slate-700 truncate">{k}</span>
                             </label>
                           ))}
                         </div>
                       </div>
-                    ) : null
-                  })()}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
-                    <input type="checkbox" checked={explodeArrays} onChange={e => setExplodeArrays(e.target.checked)} />
-                    Explode arrays into separate rows
-                  </label>
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <Button variant="secondary" onClick={handleJsonPreview} loading={loading}>👁️ Preview</Button>
-                    <Button onClick={handleJsonApply} loading={loading}>✅ Apply</Button>
-                  </div>
-                  {PreviewTable(jsonPreview)}
-                </>
+
+                      <div className="flex gap-3">
+                        <Button variant="outline" onClick={handleJsonPreview} loading={loading}>
+                          <Search className="mr-2 h-4 w-4" />
+                          Preview
+                        </Button>
+                        <Button onClick={handleJsonApply} loading={loading}>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Apply Expansion
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
+              <PreviewSection data={jsonPreview} />
             </Card>
           )}
 
           {jsonTab === 1 && (
-            <Card>
-              <SectionHeader title="Convert Columns to JSON" subtitle="Combine multiple columns into a JSON/dictionary column (reverse operation)." />
-              <div style={{ marginBottom: 12 }}>
-                <label style={labelStyle}>Columns to combine</label>
-                <div style={{ border: '1px solid var(--neutral-300)', borderRadius: 6, padding: 8, maxHeight: 160, overflowY: 'auto' }}>
-                  {columns.map(col => (
-                    <label key={col} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 4, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={combineColumns.includes(col)} onChange={e => setCombineColumns(prev => e.target.checked ? [...prev, col] : prev.filter(c => c !== col))} />
-                      {col}
-                    </label>
-                  ))}
+            <Card className="p-6">
+              <SectionHeader title="Convert Columns to JSON" subtitle="Combine multiple columns into a JSON/dictionary column." />
+              <div className="space-y-6">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-2 block uppercase tracking-wider">Columns to combine</label>
+                  <div className="border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-slate-50 grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {columns.map(col => (
+                      <label key={col} className="flex items-center gap-2 p-1.5 rounded hover:bg-white transition-colors cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={combineColumns.includes(col)}
+                          onChange={e => setCombineColumns(prev => e.target.checked ? [...prev, col] : prev.filter(c => c !== col))}
+                        />
+                        <span className="text-slate-700 truncate">{col}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
+                <Input
+                  label="New JSON Column Name"
+                  value={newJsonColName}
+                  onChange={e => setNewJsonColName(e.target.value)}
+                  placeholder="combined_json"
+                />
+
+                {combineColumns.length >= 1 && (
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => handleColumnsToJson(true)} loading={loading}>
+                      <Search className="mr-2 h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button onClick={() => handleColumnsToJson(false)} loading={loading}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Apply Conversion
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={labelStyle}>New JSON column name</label>
-                <Input value={newJsonColName} onChange={e => setNewJsonColName(e.target.value)} />
-              </div>
-              {combineColumns.length >= 1 && (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <Button variant="secondary" onClick={() => handleColumnsToJson(true)} loading={loading}>👁️ Preview</Button>
-                  <Button onClick={() => handleColumnsToJson(false)} loading={loading}>✅ Apply</Button>
-                </div>
-              )}
-              {PreviewTable(jsonPreview)}
+              <PreviewSection data={jsonPreview} />
             </Card>
           )}
-        </>
+        </div>
       )}
     </div>
   )
 }
 
-function PreviewTable(data: { headers: string[]; rows: Record<string, unknown>[] } | null) {
+function PreviewSection({ data }: { data: { headers: string[]; rows: Record<string, unknown>[] } | null }) {
   if (!data || data.rows.length === 0) return null
-  const th2: React.CSSProperties = { padding: '7px 10px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--neutral-500)', background: 'var(--neutral-100)', borderBottom: '1px solid var(--neutral-200)' }
-  const td2: React.CSSProperties = { padding: '7px 10px', fontSize: 12, borderBottom: '1px solid var(--neutral-100)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+
   return (
-    <div style={{ marginTop: 16, overflowX: 'auto', border: '1px solid var(--neutral-200)', borderRadius: 8 }}>
-      <div style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, color: 'var(--neutral-600)', borderBottom: '1px solid var(--neutral-200)' }}>Preview (first 10 rows)</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr>{data.headers.map(h => <th key={h} style={th2}>{h}</th>)}</tr></thead>
-        <tbody>{data.rows.map((row, i) => (
-          <tr key={i}>{data.headers.map(h => <td key={h} style={td2}>{row[h] === null || row[h] === undefined ? <span style={{ color: 'var(--neutral-300)', fontStyle: 'italic' }}>null</span> : String(row[h])}</td>)}</tr>
-        ))}</tbody>
-      </table>
+    <div className="mt-8 space-y-3">
+      <div className="flex items-center gap-2">
+        <Table className="h-4 w-4 text-slate-400" />
+        <h3 className="text-sm font-semibold text-slate-900">Preview (first 10 rows)</h3>
+      </div>
+      <div className="overflow-hidden border border-slate-200 rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse bg-white">
+            <thead>
+              <tr className="bg-slate-50 border-bottom border-slate-200">
+                {data.headers.map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.rows.map((row, i) => (
+                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  {data.headers.map(h => {
+                    const val = row[h]
+                    return (
+                      <td key={h} className="px-4 py-3 text-sm text-slate-600 truncate max-w-[200px]">
+                        {typeof val === 'object' ? JSON.stringify(val) : String(val ?? '')}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
