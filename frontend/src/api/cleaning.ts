@@ -132,3 +132,8 @@ export const getCleanHistory = async () => {
   const { data } = await api.get('/clean/history')
   return data as { cleaning_history: Record<string, unknown[]>; undo_count: number; redo_count: number }
 }
+
+export const clearCleanHistory = async () => {
+  const { data } = await api.post('/clean/clear-history')
+  return data as { message: string }
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { previewClean, applyClean, undoClean, redoClean, getCleanHistory } from '../api/cleaning'
+import { previewClean, applyClean, undoClean, redoClean, getCleanHistory, clearCleanHistory } from '../api/cleaning'
 import { getAllAnalysis } from '../api/cleaning'
 import { getColumnTypes } from '../api/dataset'
 import { 
@@ -15,7 +15,7 @@ import {
   ProgressBar
 } from '../components/ui'
 import DatasetBanner from '../components/DatasetBanner'
-import { RotateCcw, RotateCw, Check, Eye, Search, Filter, Trash2, Sliders } from 'lucide-react'
+import { RotateCcw, RotateCw, Check, Eye, Search, Filter, Trash2, Sliders, Clock, X } from 'lucide-react'
 
 type AlertKind = 'success' | 'error' | 'info' | 'warning'
 type AlertState = { type: AlertKind; message: string } | null
@@ -196,6 +196,15 @@ export default function CleaningWizard() {
     } catch { showAlert('error', 'Redo failed') }
   }
 
+  const handleClearHistory = async () => {
+    if (!confirm('Clear all cleaning history? This removes the operations log but keeps your cleaned data.')) return
+    try {
+      await clearCleanHistory()
+      setHistoryMap({})
+      showAlert('success', 'Cleaning history cleared')
+    } catch { showAlert('error', 'Failed to clear history') }
+  }
+
   const tabLabels = (Object.keys(METHODS) as MethodType[]).map(t => METHODS[t].label)
   const currentTabIdx = (Object.keys(METHODS) as MethodType[]).indexOf(methodType)
 
@@ -226,6 +235,16 @@ export default function CleaningWizard() {
             <Button variant="outline" size="sm" onClick={handleRedo} disabled={redoCount === 0}>
               Redo ({redoCount})
               <RotateCw className="w-4 h-4 ml-2" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleClearHistory}
+              disabled={Object.keys(historyMap).length === 0}
+              className="text-red-500 hover:text-red-600 hover:border-red-300 disabled:opacity-40"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear History
             </Button>
           </div>
         </div>
@@ -540,6 +559,79 @@ export default function CleaningWizard() {
             )}
           </div>
         </div>
+
+        {/* Global Operations History Log */}
+        {Object.keys(historyMap).length > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Operations History</h2>
+                  <p className="text-xs text-slate-500">All cleaning operations applied to this dataset</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge variant="info">
+                  {Object.values(historyMap).flat().length} operation{Object.values(historyMap).flat().length !== 1 ? 's' : ''}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  className="text-red-500 hover:text-red-600 hover:border-red-300"
+                >
+                  <X className="w-4 h-4 mr-1.5" />
+                  Clear All History
+                </Button>
+              </div>
+            </div>
+
+            <Card className="overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {(() => {
+                  const allOps: { col: string; op: Record<string, unknown> }[] = []
+                  for (const [col, ops] of Object.entries(historyMap)) {
+                    for (const op of ops as Record<string, unknown>[]) {
+                      allOps.push({ col, op })
+                    }
+                  }
+                  allOps.sort((a, b) =>
+                    String(a.op.timestamp ?? '').localeCompare(String(b.op.timestamp ?? ''))
+                  )
+                  return [...allOps].reverse().map(({ col, op }, i) => (
+                    <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">
+                            {String(op.method_name ?? 'Operation')}
+                          </div>
+                          <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                            <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{col}</span>
+                            <span>{String(op.rows_affected ?? 0)} rows affected</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                          {op.timestamp ? new Date(String(op.timestamp)).toLocaleDateString() : '—'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {op.timestamp ? new Date(String(op.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                })()}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

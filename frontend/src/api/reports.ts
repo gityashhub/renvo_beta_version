@@ -6,7 +6,7 @@ export async function generateReport(type: string) {
 }
 
 export function getReportDownloadUrl(type: string) {
-  if (type === 'pdf') return '/api/reports/download-pdf'
+  if (type === 'csv') return '/api/reports/download-csv'
   if (type === 'json') return '/api/reports/download-json'
   return ''
 }

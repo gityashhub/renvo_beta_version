@@ -145,3 +145,12 @@ async def get_history(request: Request, response: Response):
         "undo_count": len(sess.get("undo_stack", [])),
         "redo_count": len(sess.get("redo_stack", [])),
     }
+
+
+@router.post("/clean/clear-history")
+async def clear_history(request: Request, response: Response):
+    sid, sess = get_session_dep(request, response)
+    if sess.get("dataset") is None:
+        return JSONResponse(status_code=404, content={"error": "No dataset loaded"})
+    sess["cleaning_history"] = {}
+    return {"message": "Cleaning history cleared"}

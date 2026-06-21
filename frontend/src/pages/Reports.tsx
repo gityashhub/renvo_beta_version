@@ -75,7 +75,7 @@ function ReportCard({ title, description, icon: Icon, type, onGenerate, loading,
           </Button>
           {downloadable && (
             <a 
-              href={getReportDownloadUrl(type === 'json' ? 'json' : 'pdf')} 
+              href={getReportDownloadUrl(type === 'json' ? 'json' : 'csv')} 
               download 
               className="flex-1"
             >

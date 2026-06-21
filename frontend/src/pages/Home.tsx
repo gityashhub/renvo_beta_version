@@ -258,9 +258,17 @@ export default function Home() {
             Import Config
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportConfig}>
-            <Download className="h-4 w-4 mr-2" />
+            <Save className="h-4 w-4 mr-2" />
             Export Config
           </Button>
+          {hasDataset && (
+            <a href="/api/reports/download-csv" download="cleaned_dataset.csv">
+              <Button variant="primary" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Download Cleaned Data
+              </Button>
+            </a>
+          )}
           <input ref={configInputRef} type="file" accept=".json" onChange={handleImportConfig} className="hidden" />
         </div>
       </div>
