@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 
 from backend.routers import upload, dataset, config, connect
 from backend.routers import anomaly, transform, columns, clean
+from backend.routers import hypothesis, balancer, viz, reports, ai
 
 app = FastAPI(title="Renvo AI API", version="1.0.0")
 
@@ -28,6 +29,11 @@ app.include_router(anomaly.router, prefix="/api", tags=["anomaly"])
 app.include_router(transform.router, prefix="/api", tags=["transform"])
 app.include_router(columns.router, prefix="/api", tags=["columns"])
 app.include_router(clean.router, prefix="/api", tags=["clean"])
+app.include_router(hypothesis.router, prefix="/api", tags=["hypothesis"])
+app.include_router(balancer.router, prefix="/api", tags=["balancer"])
+app.include_router(viz.router, prefix="/api", tags=["viz"])
+app.include_router(reports.router, prefix="/api", tags=["reports"])
+app.include_router(ai.router, prefix="/api", tags=["ai"])
 
 
 @app.get("/api/health")

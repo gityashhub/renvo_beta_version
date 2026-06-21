@@ -49,13 +49,15 @@ interface CardProps {
   children: React.ReactNode
   className?: string
   style?: React.CSSProperties
+  onClick?: () => void
 }
 
-export function Card({ children, className, style }: CardProps) {
+export function Card({ children, className, style, onClick }: CardProps) {
   return (
     <div
-      className={cn('bg-white border border-slate-200 rounded-lg shadow-sm', className)}
+      className={cn('bg-white border border-slate-200 rounded-lg shadow-sm', className, onClick && 'cursor-pointer')}
       style={style}
+      onClick={onClick}
     >
       {children}
     </div>

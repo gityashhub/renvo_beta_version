@@ -22,3 +22,23 @@ description: Design system decisions and architecture for the React frontend ent
 
 ## 404 errors in console
 Pages hit API on mount to load dataset stats — returns 404 when no dataset is loaded (expected, not a bug).
+
+## 5 New Full-Stack Features (completed)
+All 5 placeholder pages replaced with real implementations:
+- Hypothesis Testing — 15 tests, recommendations, categorized tabs, Plotly results
+- Data Balancer — 14 methods (Oversampling/Undersampling/Hybrid), step-by-step, train/test split
+- Visualization — 4 chart panels (Missing Patterns, Column Overview, Correlation, Distribution) + Custom Builder
+- Reports — 4 report types (Executive, Audit, Methodology, JSON), download buttons
+- AI Assistant — Groq chat interface, suggested questions, column context selector
+
+### New backend routers (all registered in backend/main.py)
+- backend/routers/hypothesis.py — POST /api/hypothesis/recommend, POST /api/hypothesis/run
+- backend/routers/balancer.py — GET methods, POST validate/balance/distribution, GET download
+- backend/routers/viz.py — POST /api/viz/missing-patterns|column-overview|correlation|distribution|custom
+- backend/routers/reports.py — GET /api/reports/generate, download-pdf, download-json
+- backend/routers/ai.py — POST /api/ai/chat, GET history, POST clear
+
+### New frontend API clients
+frontend/src/api/hypothesis.ts, balancer.ts, visualization.ts, reports.ts, ai.ts
+
+**Why:** These modules existed in Python (modules/) and Streamlit pages but had no FastAPI routes. Created REST wrappers following existing router patterns.
