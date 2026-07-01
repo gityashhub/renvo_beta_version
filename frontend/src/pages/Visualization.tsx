@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getColumnTypes } from '../api/dataset'
 import { 
   getMissingPatterns, 
@@ -15,82 +15,99 @@ import { BarChart3, Grid3X3, Hash, Layers, Settings2, RefreshCw } from 'lucide-r
 declare global { interface Window { Plotly: any } }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-function PlotlyChart({ chartJson, loading }: { chartJson: any | null, loading?: boolean }) {
-  const ref = useRef<HTMLDivElement>(null)
+const CHART_HEIGHT = 320
 
+function PlotlyChart({ chartJson, loading }: { chartJson: any | null, loading?: boolean }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const plotRef   = useRef<HTMLDivElement>(null)
+  const rendered  = useRef(false)
+
+  // Render / re-render whenever chartJson changes
   useEffect(() => {
-    if (!chartJson || !ref.current) return
+    rendered.current = false
+    if (!chartJson || !plotRef.current) return
 
     let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout>
 
     const render = () => {
-      if (cancelled || !ref.current) return
-      if (window.Plotly) {
-        try {
-          const el = ref.current
-          const { data, layout } = chartJson
-          const w = el.parentElement?.clientWidth || el.clientWidth || 400
-          window.Plotly.newPlot(el, data ?? [], {
-            ...(layout ?? {}),
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(248,250,252,1)',
-            font: { family: 'Inter, sans-serif', size: 11 },
-            autosize: true,
-            width: w,
-            margin: { t: 44, r: 16, b: 44, l: 54 },
-            legend: { orientation: 'h', y: -0.18, x: 0.5, xanchor: 'center', font: { size: 10 } },
-          }, { responsive: true, displayModeBar: false })
-        } catch (e) {
-          console.error("Plotly render error:", e)
-        }
-      } else {
-        // Plotly not loaded yet, retry
-        setTimeout(render, 200)
+      if (cancelled || !plotRef.current || !wrapperRef.current) return
+      if (!window.Plotly) { retryTimer = setTimeout(render, 150); return }
+
+      const w = wrapperRef.current.clientWidth || 400
+      const { data, layout } = chartJson
+
+      // strip any incoming width/height so ours win
+      const { width: _w, height: _h, ...safeLayout } = layout ?? {}
+
+      try {
+        window.Plotly.react(plotRef.current, data ?? [], {
+          ...safeLayout,
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor:  'rgba(248,250,252,1)',
+          font:   { family: 'Inter, sans-serif', size: 11 },
+          width:  w,
+          height: CHART_HEIGHT,
+          autosize: false,
+          margin: { t: 44, r: 16, b: 48, l: 54 },
+          legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center', font: { size: 10 } },
+        }, { displayModeBar: false, responsive: false })
+        rendered.current = true
+      } catch (e) {
+        console.error('Plotly render error:', e)
       }
     }
 
-    const timer = setTimeout(render, 50)
-
+    const t = setTimeout(render, 30)
     return () => {
       cancelled = true
-      clearTimeout(timer)
-      if (ref.current && window.Plotly) {
-        try { window.Plotly.purge(ref.current) } catch {}
+      clearTimeout(t)
+      clearTimeout(retryTimer)
+      if (plotRef.current && window.Plotly) {
+        try { window.Plotly.purge(plotRef.current) } catch {}
       }
+      rendered.current = false
     }
   }, [chartJson])
 
-  // Resize observer so charts fill their container
+  // Resize: relayout with new pixel width — never let Plotly overflow the wrapper
   useEffect(() => {
-    if (!ref.current || !chartJson) return
+    if (!wrapperRef.current || !plotRef.current) return
     const ro = new ResizeObserver(() => {
-      if (ref.current && window.Plotly) {
-        try { window.Plotly.Plots.resize(ref.current) } catch {}
-      }
+      if (!rendered.current || !plotRef.current || !wrapperRef.current || !window.Plotly) return
+      const w = wrapperRef.current.clientWidth
+      try { window.Plotly.relayout(plotRef.current, { width: w, height: CHART_HEIGHT }) } catch {}
     })
-    ro.observe(ref.current)
+    ro.observe(wrapperRef.current)
     return () => ro.disconnect()
-  }, [chartJson])
+  }, [])
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[280px] sm:h-[320px] bg-slate-50 rounded-lg border border-dashed border-slate-200">
-        <RefreshCw className="w-7 h-7 text-slate-300 animate-spin mb-2" />
-        <span className="text-slate-400 text-sm">Generating visualization…</span>
-      </div>
-    )
-  }
+  const placeholder = (content: React.ReactNode) => (
+    <div
+      className="flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200"
+      style={{ height: CHART_HEIGHT }}
+    >
+      {content}
+    </div>
+  )
 
-  if (!chartJson) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[280px] sm:h-[320px] bg-slate-50 rounded-lg border border-dashed border-slate-200">
-        <span className="text-slate-400 text-sm italic text-center px-4">No data yet — click the load button above.</span>
-      </div>
-    )
-  }
+  if (loading) return placeholder(
+    <>
+      <RefreshCw className="w-7 h-7 text-slate-300 animate-spin mb-2" />
+      <span className="text-slate-400 text-sm">Generating visualization…</span>
+    </>
+  )
+
+  if (!chartJson) return placeholder(
+    <span className="text-slate-400 text-sm italic text-center px-6">
+      No data yet — click the button above to load this chart.
+    </span>
+  )
 
   return (
-    <div ref={ref} className="w-full h-[280px] sm:h-[340px]" />
+    <div ref={wrapperRef} className="w-full overflow-hidden" style={{ height: CHART_HEIGHT }}>
+      <div ref={plotRef} style={{ width: '100%', height: CHART_HEIGHT }} />
+    </div>
   )
 }
 
