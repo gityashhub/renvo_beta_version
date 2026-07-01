@@ -1,0 +1,212 @@
+================================================================
+  RENVO AI — LOCAL SETUP INSTRUCTIONS
+  Intelligent Data Cleaning Platform
+================================================================
+
+REQUIREMENTS
+------------
+  - Python 3.11  (https://www.python.org/downloads/)
+  - Node.js 18+  (https://nodejs.org/)
+  - npm 9+       (comes with Node.js)
+  - Git          (https://git-scm.com/)
+
+A Groq API key is required for the AI Assistant feature.
+Get one free at: https://console.groq.com/
+
+
+================================================================
+  STEP 1 — CLONE THE PROJECT
+================================================================
+
+  git clone <your-repo-url>
+  cd <project-folder>
+
+
+================================================================
+  STEP 2 — SET UP THE PYTHON BACKEND
+================================================================
+
+  Create and activate a virtual environment:
+
+  Windows:
+    python -m venv venv
+    venv\Scripts\activate
+
+  macOS / Linux:
+    python3 -m venv venv
+    source venv/bin/activate
+
+  Install Python dependencies:
+
+    pip install fastapi uvicorn[standard] python-multipart
+    pip install numpy==1.26.4 pandas scipy==1.11.4
+    pip install scikit-learn==1.2.2 imbalanced-learn==0.10.1 statsmodels==0.14.2
+    pip install matplotlib seaborn plotly
+    pip install openpyxl pillow reportlab jinja2
+    pip install groq pymysql psycopg2-binary SQLAlchemy
+
+  Or install everything from the requirements file:
+
+    pip install -r backend/requirements.txt
+    pip install fastapi uvicorn[standard] python-multipart
+
+
+================================================================
+  STEP 3 — SET YOUR GROQ API KEY
+================================================================
+
+  Windows (Command Prompt):
+    set GROQ_API_KEY=your_api_key_here
+
+  Windows (PowerShell):
+    $env:GROQ_API_KEY="your_api_key_here"
+
+  macOS / Linux:
+    export GROQ_API_KEY=your_api_key_here
+
+  To make it permanent, add the export line to your
+  ~/.bashrc, ~/.zshrc, or ~/.bash_profile file.
+
+  NOTE: Without this key the AI Assistant tab will not work,
+  but all other features (upload, analysis, cleaning, reports,
+  charts, etc.) will work fine.
+
+
+================================================================
+  STEP 4 — BUILD THE REACT FRONTEND
+================================================================
+
+  Open a terminal and run:
+
+    cd frontend
+    npm install
+    npm run build
+    cd ..
+
+  This creates a production build in frontend/dist/ which
+  FastAPI serves automatically.
+
+
+================================================================
+  STEP 5 — START THE APPLICATION
+================================================================
+
+  Make sure your virtual environment is still active, then run:
+
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 5000
+
+  Open your browser and go to:
+
+    http://localhost:5000
+
+
+================================================================
+  QUICK START (all steps combined after first-time setup)
+================================================================
+
+  After the first setup, to run the app each time:
+
+  macOS / Linux:
+    source venv/bin/activate
+    export GROQ_API_KEY=your_api_key_here
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 5000
+
+  Windows (PowerShell):
+    venv\Scripts\activate
+    $env:GROQ_API_KEY="your_api_key_here"
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 5000
+
+  Then open: http://localhost:5000
+
+
+================================================================
+  DEVELOPMENT MODE (hot reload)
+================================================================
+
+  If you want to edit the frontend and see changes live,
+  run both servers simultaneously:
+
+  Terminal 1 — Backend (with auto-reload):
+    source venv/bin/activate  (or venv\Scripts\activate on Windows)
+    export GROQ_API_KEY=your_api_key_here
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+
+  Terminal 2 — Frontend dev server:
+    cd frontend
+    npm run dev
+
+  Then open: http://localhost:5173
+  (In dev mode, the frontend proxies API calls to port 5000.)
+
+  NOTE: In dev mode, changes to frontend files appear instantly.
+  Changes to backend Python files also reload automatically
+  due to the --reload flag.
+
+
+================================================================
+  TROUBLESHOOTING
+================================================================
+
+  ERROR: "imbalanced-learn" install fails
+    -> Make sure you are using Python 3.11 exactly.
+    -> Try: pip install imbalanced-learn==0.10.1 --no-build-isolation
+
+  ERROR: "psycopg2-binary" install fails on macOS
+    -> Try: pip install psycopg2-binary --no-cache-dir
+    -> Or skip it if you don't need the Supabase/PostgreSQL connector.
+
+  ERROR: Port 5000 already in use
+    -> Use a different port: --port 8000
+    -> Then open: http://localhost:8000
+
+  ERROR: ModuleNotFoundError for any package
+    -> Make sure your virtual environment is activated (you should
+       see (venv) at the start of your terminal prompt).
+    -> Re-run the pip install commands.
+
+  ERROR: "GROQ_API_KEY not set" in AI Assistant
+    -> Set the environment variable as described in Step 3.
+    -> The key must be set in the SAME terminal you run uvicorn from.
+
+  PDF generation fails
+    -> Make sure reportlab>=4.0 is installed:
+       pip install "reportlab>=4.0"
+
+  Charts not loading (Plotly)
+    -> The charts page loads Plotly from a CDN.
+    -> Make sure you have an internet connection on first load.
+
+  MySQL / Supabase connection errors
+    -> These are optional connectors. The app works fully without them.
+    -> Ensure the database host is reachable from your machine.
+
+
+================================================================
+  PROJECT STRUCTURE (for reference)
+================================================================
+
+  backend/
+    main.py              — FastAPI entry point
+    routers/             — API route handlers
+      upload.py          — File upload
+      dataset.py         — Dataset operations
+      anomaly.py         — Anomaly & duplicate detection
+      transform.py       — Data transformation
+      columns.py         — Column analysis
+      clean.py           — Cleaning wizard
+      hypothesis.py      — Hypothesis testing
+      balancer.py        — Data balancer
+      viz.py             — Visualization
+      reports.py         — PDF / CSV / JSON report generation
+      ai.py              — Groq AI assistant
+      config.py          — Config import/export
+      connect.py         — MySQL / Supabase connectors
+
+  frontend/
+    src/
+      pages/             — One file per page/section
+      components/        — Shared UI components
+      api/               — API client functions
+    dist/                — Production build (served by FastAPI)
+
+================================================================

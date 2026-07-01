@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "j_VkX6G7u5osOmIUAYFEh"
+uri = "file://LOCAL_SETUP.txt"
+type = "text"
+title = "Renvo AI — Local Setup Instructions"
