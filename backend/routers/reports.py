@@ -233,7 +233,8 @@ def _generate_pdf_report(df: pd.DataFrame, cleaning_history: dict, analysis_resu
     styles = getSampleStyleSheet()
 
     def style(name, **kw):
-        s = ParagraphStyle(name, parent=styles["Normal"], **kw)
+        kw.setdefault('parent', styles["Normal"])
+        s = ParagraphStyle(name, **kw)
         return s
 
     H1 = style("H1", fontSize=22, textColor=WHITE, fontName="Helvetica-Bold",
