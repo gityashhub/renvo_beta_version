@@ -245,7 +245,7 @@ export default function Home() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 sm:space-y-6 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-5 sm:space-y-6 bg-slate-50 min-h-screen">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div className="min-w-0">

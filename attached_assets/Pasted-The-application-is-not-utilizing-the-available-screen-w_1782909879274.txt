@@ -1,0 +1,77 @@
+The application is not utilizing the available screen width.
+
+Current issue:
+After the left sidebar, the main content area is constrained to a fixed/max width, leaving a large blank area on the right side on desktop screens. This happens across almost every page.
+
+I want the layout to behave like modern dashboard applications (Supabase, Vercel, GitHub, Notion, Linear, etc.), where the content expands to fill the available viewport.
+
+Requirements:
+
+1. Remove any unnecessary width constraints such as:
+   - max-w-*
+   - max-width
+   - container
+   - mx-auto
+   - fixed width wrappers
+   - unnecessary centered layouts
+
+2. After the sidebar, the main content should occupy ALL remaining horizontal space.
+
+3. Layout should be:
+
+-------------------------------------------------
+| Sidebar |        Main Content (100%)          |
+|         |                                     |
+|         |                                     |
+|         |                                     |
+-------------------------------------------------
+
+There should NOT be a large empty area on the right.
+
+4. The main wrapper should use layouts like:
+   - display: flex
+   - flex: 1
+   - width: 100%
+   - min-width: 0
+   - overflow-x: auto only when necessary
+
+5. Every page should expand properly, including:
+   - Dashboard
+   - Data Import
+   - Column Analysis
+   - Cleaning Wizard
+   - Data Transformation
+   - Anomaly Detection
+   - Charts
+   - Reports
+   - AI Assistant
+   - Hypothesis Testing
+   - Data Balancer
+   - All future pages
+
+6. Cards should resize according to the available width instead of staying fixed.
+
+7. Tables should use the available width.
+
+8. Charts should stretch to available width.
+
+9. Forms should expand naturally.
+
+10. The layout should remain fully responsive:
+    - Desktop uses full width.
+    - Tablet adjusts correctly.
+    - Mobile remains unchanged.
+
+11. Search the entire project for components or wrappers using classes such as:
+    - container
+    - max-w-*
+    - max-width
+    - w-[...]
+    - mx-auto
+    - fixed pixel widths
+    and replace them with flexible layouts where appropriate.
+
+12. Do NOT change any functionality or business logic.
+Only fix the layout so the application fully utilizes the available horizontal space.
+
+After making changes, verify every page on desktop (1920px, 1440px, 1280px) to ensure there is no unnecessary blank space to the right of the main content.

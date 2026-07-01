@@ -170,7 +170,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5 sm:space-y-7">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-5 sm:space-y-7">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-0 sm:justify-between">
         <div className="flex-1 min-w-0">

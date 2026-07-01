@@ -107,7 +107,7 @@ export default function HypothesisTesting() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5 sm:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-5 sm:space-y-6">
       <SectionHeader 
         title="Hypothesis Testing" 
         subtitle="Apply statistical tests to validate assumptions and find relationships in your data"

@@ -221,7 +221,7 @@ export default function CleaningWizard() {
 
   return (
     <div className="bg-slate-50 min-h-screen">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 w-full">
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Cleaning Wizard</h1>
