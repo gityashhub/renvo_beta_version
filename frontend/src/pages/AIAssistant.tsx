@@ -84,7 +84,7 @@ export default function AIAssistant() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] p-6 bg-slate-50">
+    <div className="flex flex-col h-[calc(100vh-56px)] lg:h-screen p-3 sm:p-4 lg:p-6 bg-slate-50">
       <SectionHeader 
         title="AI Assistant" 
         subtitle="Powered by Llama 3.1 via Groq"

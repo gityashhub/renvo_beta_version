@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useSidebar } from './Layout'
 import {
   Database,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   FileText,
   Bot,
   Activity,
+  X,
 } from 'lucide-react'
 
 const NAV = [
@@ -53,19 +55,40 @@ const NAV = [
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const { open, setOpen } = useSidebar()
+
+  const handleNav = () => setOpen(false)
 
   return (
-    <aside className="w-[240px] bg-white flex flex-col flex-shrink-0 border-r border-slate-200" style={{ height: '100vh' }}>
+    <aside
+      className={[
+        'bg-white flex flex-col flex-shrink-0 border-r border-slate-200 z-40',
+        'fixed top-0 left-0 h-full w-[240px]',
+        'transition-transform duration-300 ease-in-out',
+        // Mobile: slide in/out
+        open ? 'translate-x-0' : '-translate-x-full',
+        // Desktop: always visible, static (not fixed)
+        'lg:relative lg:translate-x-0 lg:z-auto',
+      ].join(' ')}
+    >
       {/* Logo */}
       <div
-        className="h-16 flex items-center px-6 border-b border-slate-200 cursor-pointer"
-        onClick={() => navigate('/')}
+        className="h-16 flex items-center px-4 sm:px-6 border-b border-slate-200 cursor-pointer shrink-0"
+        onClick={() => { navigate('/'); handleNav() }}
       >
         <Database className="w-5 h-5 text-blue-600 mr-2 shrink-0" />
-        <div>
-          <h1 className="font-bold text-sm tracking-wide text-slate-900">Renvo AI</h1>
+        <div className="min-w-0">
+          <h1 className="font-bold text-sm tracking-wide text-slate-900 truncate">Renvo AI</h1>
           <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Data Cleaning Platform</p>
         </div>
+        {/* Close button — mobile only */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(false) }}
+          className="ml-auto p-1.5 rounded-md text-slate-400 hover:bg-slate-100 lg:hidden"
+          aria-label="Close menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -73,7 +96,7 @@ export default function Sidebar() {
         {NAV.map(({ group, items }) => (
           <div key={group ?? 'main'} className="space-y-0.5">
             {group && (
-              <div className="px-6 text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
+              <div className="px-4 sm:px-6 text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
                 {group}
               </div>
             )}
@@ -82,8 +105,9 @@ export default function Sidebar() {
                 key={to}
                 to={to}
                 end={to === '/'}
+                onClick={handleNav}
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-2 text-sm font-medium transition-colors border-l-[3px] ${
+                  `flex items-center px-4 sm:px-6 py-2.5 text-sm font-medium transition-colors border-l-[3px] ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 border-blue-600'
                       : 'text-slate-600 border-transparent hover:bg-slate-50 hover:text-slate-900'
@@ -91,7 +115,7 @@ export default function Sidebar() {
                 }
               >
                 <Icon className="w-4 h-4 mr-3 shrink-0" />
-                {label}
+                <span className="truncate">{label}</span>
               </NavLink>
             ))}
           </div>
@@ -99,12 +123,12 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom user area */}
-      <div className="p-4 border-t border-slate-200">
+      <div className="p-3 sm:p-4 border-t border-slate-200 shrink-0">
         <div className="flex items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
           <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
             <span className="text-xs font-semibold text-blue-700">DA</span>
           </div>
-          <div className="ml-3 overflow-hidden">
+          <div className="ml-3 overflow-hidden min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">Data Analyst</p>
             <p className="text-xs text-slate-500 truncate">renvo.ai</p>
           </div>

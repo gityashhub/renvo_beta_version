@@ -148,7 +148,7 @@ export default function ColumnAnalysis() {
   const tabs = ["Overview", "Missing Values", "Outliers", "Recommendations"]
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 min-h-screen bg-slate-50">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 min-h-screen bg-slate-50">
       <div>
         <SectionHeader 
           title="Column Analysis" 

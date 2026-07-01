@@ -1,0 +1,269 @@
+You are a senior Frontend UI/UX engineer.
+
+Your task is to make the entire RenvoAI application fully responsive without changing any existing functionality, business logic, API calls, routing, state management, or backend integration.
+
+Requirements:
+
+## Goal
+Make every page, component, modal, table, chart, sidebar, navbar, form, and dashboard perfectly responsive for all screen sizes.
+
+Supported screen sizes:
+- 320px (small phones)
+- 375px
+- 390px
+- 414px
+- 480px
+- 768px (tablet)
+- 1024px
+- 1280px
+- 1440px
+- 1920px
+
+## Important Rules
+
+DO NOT:
+- Change any functionality
+- Remove any feature
+- Break existing layouts
+- Modify backend logic
+- Change API endpoints
+- Change business logic
+- Change file structure unnecessarily
+
+ONLY improve responsiveness.
+
+---
+
+## Responsive Requirements
+
+### Navigation
+- Mobile hamburger menu
+- Collapsible sidebar
+- Sticky navbar
+- Sidebar overlays content on mobile
+- Smooth open/close animations
+
+### Dashboard
+- Cards stack vertically on mobile
+- Grid becomes:
+  - 1 column on phones
+  - 2 columns on tablets
+  - 3–4 columns on desktop
+- Equal spacing everywhere
+
+### Tables
+- Never overflow screen
+- Horizontal scrolling when necessary
+- Sticky headers
+- Responsive pagination
+- Responsive action buttons
+- Compact rows on mobile
+
+### Forms
+- Full width inputs
+- Responsive labels
+- Proper spacing
+- Buttons become full width on mobile
+- No overflowing fields
+
+### Charts
+- Automatically resize
+- Maintain aspect ratio
+- Responsive legends
+- No clipping
+
+### Cards
+- Equal height
+- Responsive padding
+- Responsive typography
+- Proper wrapping
+
+### Buttons
+- Touch friendly
+- Minimum height 44px
+- Proper spacing
+- Icons aligned correctly
+
+### Typography
+Use responsive typography.
+
+Example:
+
+sm
+text-sm
+
+md
+text-base
+
+lg
+text-lg
+
+xl
+text-xl
+
+2xl
+text-2xl
+
+Use clamp() where appropriate.
+
+### Images
+- max-width:100%
+- height:auto
+- Never overflow
+
+### Modals
+- Max width 95vw on mobile
+- Scrollable content
+- Sticky footer buttons
+- Proper spacing
+- Close button always visible
+
+### Dialogs
+- Responsive width
+- Prevent overflow
+- Keyboard safe on mobile
+
+### File Upload Areas
+- Responsive dropzones
+- Full width
+- Proper spacing
+
+### Data Tables
+- Responsive filters
+- Filters wrap correctly
+- Search bars resize
+- Export buttons wrap
+
+### AI Chat
+- Responsive chat window
+- Input fixed to bottom
+- Messages wrap correctly
+- Long code blocks scroll horizontally
+
+### Code Blocks
+- Horizontal scrolling
+- Responsive font size
+- No layout breaking
+
+### PDF Preview
+- Scale correctly
+- Responsive container
+- No overflow
+
+### Tabs
+- Scroll horizontally on mobile
+- Equal spacing
+- Active indicator remains visible
+
+### Sidebar
+Desktop:
+- Fixed
+
+Tablet:
+- Collapsible
+
+Mobile:
+- Drawer
+
+### Header
+- Wrap controls when needed
+- Search adapts
+- User menu responsive
+
+### Footer
+- Responsive columns
+- Stack vertically on mobile
+
+---
+
+## Tailwind Requirements
+
+Prefer Tailwind responsive utilities:
+
+sm:
+md:
+lg:
+xl:
+2xl:
+
+Use:
+
+flex-wrap
+overflow-x-auto
+grid-cols-1
+md:grid-cols-2
+lg:grid-cols-3
+xl:grid-cols-4
+max-w-full
+w-full
+min-w-0
+break-words
+truncate
+line-clamp
+aspect-video
+object-cover
+gap utilities
+responsive padding and margin
+
+Avoid fixed pixel widths whenever possible.
+
+---
+
+## Overflow Prevention
+
+Ensure:
+
+- No horizontal scrolling of entire page
+- No clipped cards
+- No clipped buttons
+- No clipped tables
+- No clipped charts
+- No overlapping components
+- No text overflow
+- Long filenames wrap correctly
+
+---
+
+## Accessibility
+
+Maintain:
+
+- Keyboard navigation
+- Focus states
+- Touch targets
+- ARIA attributes
+- Proper color contrast
+
+---
+
+## Performance
+
+Do not introduce unnecessary re-renders.
+
+Reuse existing components.
+
+Avoid duplicate code.
+
+Do not install unnecessary libraries.
+
+---
+
+## Final Verification
+
+Check every page individually and ensure:
+
+✓ No horizontal overflow
+✓ Works from 320px to 1920px
+✓ Sidebar behaves correctly
+✓ Navbar responsive
+✓ All tables usable
+✓ All forms usable
+✓ All modals responsive
+✓ Charts responsive
+✓ Dashboard responsive
+✓ AI chat responsive
+✓ Mobile-friendly spacing
+✓ Tablet layout optimized
+✓ Desktop layout preserved
+
+Fix every responsiveness issue found across the entire RenvoAI project until the application is fully responsive while keeping all existing functionality unchanged.

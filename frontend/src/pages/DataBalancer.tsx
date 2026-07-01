@@ -135,7 +135,7 @@ export default function DataBalancer() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5 sm:space-y-8">
       <SectionHeader 
         title="Data Balancer" 
         subtitle="Address class imbalance issues using oversampling, undersampling, or hybrid techniques"

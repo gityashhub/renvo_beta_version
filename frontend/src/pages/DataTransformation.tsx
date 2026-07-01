@@ -209,7 +209,7 @@ export default function DataTransformation() {
   const DT_COMPONENTS = ['year', 'month', 'day', 'hour', 'minute', 'second', 'weekday', 'week', 'quarter']
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5 sm:space-y-6 bg-slate-50 min-h-screen">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">Data Transformation</h2>
         <p className="text-sm text-slate-500 mt-1">Merge, split, and expand dataset columns</p>

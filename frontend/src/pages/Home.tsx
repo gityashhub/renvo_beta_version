@@ -245,26 +245,26 @@ export default function Home() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 sm:space-y-6 bg-slate-50 min-h-screen">
       {/* Page Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Upload and configure your dataset to begin analysis.</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base">Upload and configure your dataset to begin analysis.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => configInputRef.current?.click()}>
-            <Import className="h-4 w-4 mr-2" />
+            <Import className="h-4 w-4 mr-1.5" />
             Import Config
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportConfig}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="h-4 w-4 mr-1.5" />
             Export Config
           </Button>
           {hasDataset && (
             <a href="/api/reports/download-csv" download="cleaned_dataset.csv">
               <Button variant="primary" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-1.5" />
                 Download Cleaned Data
               </Button>
             </a>
