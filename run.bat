@@ -2,6 +2,9 @@
 setlocal EnableDelayedExpansion
 title Renvo AI — Startup
 
+:: Always run from the folder where this script lives
+cd /d "%~dp0"
+
 echo.
 echo  ================================================================
 echo   RENVO AI — Intelligent Data Cleaning Platform

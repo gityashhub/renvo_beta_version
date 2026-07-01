@@ -1,0 +1,316 @@
+You are a Senior AI Architect specializing in Agentic AI systems.
+
+Analyze the entire RenvoAI project and propose how it can evolve from a traditional AI-powered data cleaning platform into a truly Agentic AI platform while keeping humans fully in control.
+
+DO NOT write code immediately.
+
+First, understand the complete application, its architecture, current features, workflows, backend, frontend, and AI capabilities.
+
+Then provide a detailed design document.
+
+## Objective
+
+RenvoAI should become an AI Agent that can intelligently analyze, plan, recommend, and execute data cleaning tasks, but it must NEVER take irreversible actions without explicit human approval.
+
+Think of it as:
+
+- AI does the thinking
+- Human does the approving
+- AI executes only after approval
+
+This is Human-in-the-Loop (HITL), not full automation.
+
+------------------------------------------------
+
+Current Features
+
+Review all existing modules including:
+
+- File Upload
+- Database Import
+- Column Analysis
+- Cleaning Wizard
+- Data Transformation
+- Anomaly Detection
+- Charts
+- Reports
+- Hypothesis Testing
+- Data Balancer
+- AI Assistant
+
+Understand how they currently work.
+
+------------------------------------------------
+
+I want RenvoAI to behave like an intelligent data analyst.
+
+For example:
+
+User uploads dataset.
+
+↓
+
+Agent automatically explores dataset.
+
+↓
+
+Agent detects:
+
+• Missing values
+• Duplicate records
+• Outliers
+• Invalid formats
+• Mixed data types
+• Inconsistent categories
+• Suspicious values
+• High correlations
+• Data leakage
+• Target imbalance
+• Possible feature engineering opportunities
+
+↓
+
+Agent builds a complete cleaning strategy.
+
+↓
+
+Instead of executing immediately, it presents:
+
+"I found 18 issues."
+
+Issue 1
+Recommended action
+Confidence
+Reason
+
+Issue 2
+Recommended action
+Confidence
+Reason
+
+...
+
+User can:
+
+✓ Approve all
+
+✓ Reject all
+
+✓ Approve individually
+
+✓ Modify parameters
+
+↓
+
+Only after approval does the agent execute the plan.
+
+------------------------------------------------
+
+Agent Capabilities
+
+Suggest how RenvoAI can include:
+
+• Intelligent Planning Agent
+• Data Profiling Agent
+• Cleaning Strategy Agent
+• Transformation Agent
+• Validation Agent
+• Visualization Agent
+• Report Agent
+• ML Readiness Agent
+• Statistical Analysis Agent
+• Insight Generation Agent
+
+Explain responsibilities for each agent.
+
+------------------------------------------------
+
+Human Control
+
+Every important action should require approval.
+
+Examples:
+
+Fill missing values?
+
+Approve
+
+Reject
+
+Choose another method
+
+---------------------------------------
+
+Remove duplicates?
+
+Approve
+
+Reject
+
+Preview affected rows
+
+---------------------------------------
+
+Convert data types?
+
+Approve
+
+Reject
+
+Edit manually
+
+---------------------------------------
+
+Normalize values?
+
+Approve
+
+Reject
+
+Change method
+
+------------------------------------------------
+
+Execution Workflow
+
+Suggest a workflow like:
+
+Dataset
+
+↓
+
+Agent Analysis
+
+↓
+
+Planning
+
+↓
+
+Recommendation
+
+↓
+
+Human Review
+
+↓
+
+Approval
+
+↓
+
+Execution
+
+↓
+
+Validation
+
+↓
+
+Report
+
+------------------------------------------------
+
+Agent Memory
+
+Suggest whether agents should remember:
+
+Cleaning history
+
+User preferences
+
+Preferred cleaning methods
+
+Rejected actions
+
+Approved actions
+
+Past datasets
+
+Previous reports
+
+When should memory be session-only versus long-term?
+
+------------------------------------------------
+
+Explain how LLMs can be used without making up facts.
+
+Recommend where deterministic algorithms should be preferred over LLM reasoning.
+
+------------------------------------------------
+
+Confidence Scores
+
+For every recommendation explain how confidence scores should be calculated.
+
+------------------------------------------------
+
+Safety
+
+Recommend safeguards to prevent:
+
+Accidental deletion
+
+Wrong transformations
+
+Hallucinated recommendations
+
+Unsafe SQL execution
+
+Incorrect data type conversion
+
+Loss of important columns
+
+------------------------------------------------
+
+User Experience
+
+Design a workflow that feels like collaborating with a senior data analyst instead of using a chatbot.
+
+------------------------------------------------
+
+Scalability
+
+Recommend an architecture that supports:
+
+Multiple specialized agents
+
+Future MCP integrations
+
+External tools
+
+Plugin system
+
+Workflow engine
+
+Task queue
+
+Background jobs
+
+------------------------------------------------
+
+Output Format
+
+Provide:
+
+1. Overall architecture
+
+2. Agent architecture
+
+3. Human-in-the-loop workflow
+
+4. Agent communication model
+
+5. Recommended technologies
+
+6. Risks
+
+7. Benefits
+
+8. Features to build first (MVP)
+
+9. Features for future versions
+
+10. A roadmap from the current RenvoAI to a fully agentic platform.
+
+Do not generate implementation code yet. Focus on architecture, product design, workflows, and recommendations based on the existing RenvoAI codebase.
