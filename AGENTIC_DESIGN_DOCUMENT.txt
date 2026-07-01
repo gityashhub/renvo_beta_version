@@ -1,0 +1,927 @@
+================================================================
+  RENVO AI — AGENTIC PLATFORM DESIGN DOCUMENT
+  Evolving from AI-Assisted to Human-in-the-Loop Agentic AI
+  Version 1.0  |  Architecture & Product Design
+================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 1 — CURRENT STATE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+How RenvoAI Works Today
+────────────────────────
+The current platform is a manual-first application where:
+
+  • The user navigates page by page
+  • Each page is a siloed tool (Column Analysis, Cleaning Wizard, etc.)
+  • The AI Assistant answers questions reactively — only when asked
+  • No page knows what the other pages have discovered
+  • The user must manually decide what to clean and in what order
+  • Cleaning operations are executed immediately on request
+  • No global plan, no strategy, no cross-module intelligence
+
+Current Backend Modules (FastAPI Routers):
+  - upload.py       → File/CSV/Excel ingestion
+  - dataset.py      → Dataset read, stats, undo/redo
+  - anomaly.py      → Outlier detection, duplicate detection
+  - transform.py    → Merge/split columns, JSON expansion
+  - columns.py      → Per-column quality analysis
+  - clean.py        → Imputation, outlier handling, text ops
+  - hypothesis.py   → Statistical tests (15 types)
+  - balancer.py     → Class imbalance resampling (14 methods)
+  - viz.py          → Plotly chart generation
+  - reports.py      → PDF/CSV/JSON/Markdown export
+  - ai.py           → Groq LLM chat (llama-3.1-8b-instant)
+  - config.py       → Schema config import/export
+  - connect.py      → MySQL / Supabase connectors
+
+Current AI Role:
+  - Passive: answers questions, gives advice when explicitly asked
+  - Stateless: no memory across questions in a session
+  - Generic: not grounded in deterministic analysis of the dataset
+  - Disconnected: AI and cleaning modules are completely separate
+
+The Gap:
+  The platform has all the analytical TOOLS. What it lacks is an
+  ORCHESTRATOR that ties them together into a coherent strategy
+  and presents that strategy to the user for approval.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 2 — OVERALL ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Target Architecture: Orchestrated Multi-Agent System
+──────────────────────────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                    REACT FRONTEND                       │
+  │  Agent Workspace  │  Approval Queue  │  Existing Pages  │
+  └──────────────────────────┬──────────────────────────────┘
+                             │ REST / WebSocket
+  ┌──────────────────────────▼──────────────────────────────┐
+  │                   FASTAPI GATEWAY                       │
+  │           Session Manager  │  Auth  │  Rate Limiter     │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+  ┌──────────────────────────▼──────────────────────────────┐
+  │               ORCHESTRATOR AGENT                        │
+  │  - Receives dataset + user goal                         │
+  │  - Dispatches specialized sub-agents                    │
+  │  - Assembles plan from their outputs                    │
+  │  - Tracks approval/rejection state                      │
+  │  - Executes approved steps via existing routers         │
+  └──┬──────────┬──────────┬──────────┬────────────────┬───┘
+     │          │          │          │                │
+  ┌──▼──┐  ┌───▼──┐  ┌────▼──┐  ┌───▼────┐  ┌───────▼──┐
+  │Prof-│  │Clean-│  │Trans- │  │Statist-│  │  Other   │
+  │iler │  │ ing  │  │form   │  │ical    │  │  Agents  │
+  │Agent│  │Agent │  │Agent  │  │Agent   │  │  (future)│
+  └──┬──┘  └──┬───┘  └────┬──┘  └──┬─────┘  └──────────┘
+     │        │           │        │
+  ┌──▼────────▼───────────▼────────▼──────────────────────┐
+  │              DETERMINISTIC ANALYSIS ENGINE             │
+  │  (Existing pandas/scipy/sklearn logic in routers)      │
+  └────────────────────────────────────────────────────────┘
+     │
+  ┌──▼──────────────────────────────────────────────────────┐
+  │                 LLM LAYER (Groq API)                    │
+  │  Used ONLY for: narrative generation, confidence         │
+  │  explanation, user-facing reasoning text                │
+  │  NOT used for: data decisions, statistics, thresholds   │
+  └─────────────────────────────────────────────────────────┘
+     │
+  ┌──▼──────────────────────────────────────────────────────┐
+  │               AGENT MEMORY STORE                        │
+  │  Session Memory (fast) + Long-term Store (optional DB)  │
+  └─────────────────────────────────────────────────────────┘
+
+Key design principle:
+  Deterministic code makes ALL decisions about data.
+  The LLM writes the EXPLANATION of those decisions.
+  The human APPROVES those decisions before execution.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 3 — AGENT ARCHITECTURE (10 Agents)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 1: ORCHESTRATOR AGENT                                │
+│  Role: Master coordinator                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Receives dataset + optional user goal (e.g. "prepare     │
+│    this for ML classification")                             │
+│  • Dispatches sub-agents in the right order                 │
+│  • Merges sub-agent findings into one unified plan          │
+│  • Deduplicates overlapping recommendations                 │
+│  • Prioritizes issues by severity + confidence              │
+│  • Tracks which steps are approved, rejected, modified      │
+│  • Submits only approved steps to execution                 │
+│  • Resumes if user approves partial steps                   │
+│                                                             │
+│  Inputs:  dataset metadata, column types, user goal         │
+│  Outputs: ordered list of IssueCard objects with actions    │
+│                                                             │
+│  Deterministic role: ordering, deduplication, priority sort │
+│  LLM role: summarize overall plan in plain English          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 2: DATA PROFILING AGENT                              │
+│  Role: First scan — establish ground truth                  │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Row/column count, data types, memory usage               │
+│  • Missing value rate per column (exact %)                  │
+│  • Unique value ratio (detect IDs vs categories)            │
+│  • Cardinality analysis                                     │
+│  • Detect constant columns (zero variance)                  │
+│  • Detect near-constant columns (>95% same value)           │
+│  • Detect likely ID columns (unique == rows)                │
+│  • Detect date-like strings                                 │
+│  • Detect numeric strings stored as object                  │
+│  • Detect boolean columns stored as 0/1 or yes/no           │
+│  • Cross-column null patterns (nulls in same rows)          │
+│                                                             │
+│  Technology: pandas + numpy, 100% deterministic             │
+│  LLM role: generate the "Dataset Overview" narrative        │
+│  Output: DataProfile object consumed by other agents        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 3: CLEANING STRATEGY AGENT                           │
+│  Role: Decide WHAT needs to be fixed and HOW                │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Missing values: choose imputation method per column      │
+│    - <5% missing → median/mode imputation (low risk)        │
+│    - 5–30% missing → model-based or KNN imputation          │
+│    - >30% missing → recommend column drop (flag for user)   │
+│    - Time series context → forward/backward fill            │
+│  • Outlier handling strategy per column type                │
+│    - IQR, Z-score, Isolation Forest thresholds              │
+│  • Duplicate strategy: exact vs fuzzy matching              │
+│  • Type mismatch resolution rules                           │
+│  • Inconsistent category merging (case, whitespace)         │
+│                                                             │
+│  Technology: rule engine (Python) + sklearn thresholds      │
+│  LLM role: write the "Why we recommend this" explanation    │
+│  Output: List[CleaningRecommendation] with confidence score │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 4: ANOMALY DETECTION AGENT                           │
+│  Role: Find what is wrong or suspicious                     │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Statistical outliers (IQR, Z-score, Isolation Forest)    │
+│  • Exact duplicate rows                                     │
+│  • Near-duplicate rows (fuzzy match threshold)              │
+│  • Mixed data type columns ("123abc", "#N/A", "nan")        │
+│  • Inconsistent categorical values ("Male"/"male"/"MALE")   │
+│  • Out-of-range values (age=200, price=-99)                 │
+│  • Suspicious patterns (all zeros, all nulls in a column)   │
+│  • Future dates in date columns (data entry error)          │
+│  • Negative values in columns that should be positive       │
+│                                                             │
+│  Technology: existing anomaly.py + new fuzzy/range checks   │
+│  LLM role: describe what each anomaly might mean            │
+│  Output: List[AnomalyFinding] with row indices + counts     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 5: TRANSFORMATION AGENT                              │
+│  Role: Suggest structural improvements to the dataset       │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Detect columns that should be split (name → first, last) │
+│  • Detect columns that should be merged                     │
+│  • Detect JSON/dict columns that should be expanded         │
+│  • Recommend datetime feature extraction (hour, weekday)    │
+│  • Recommend binning for continuous variables               │
+│  • Recommend one-hot encoding for low-cardinality columns   │
+│  • Recommend label encoding for high-cardinality columns    │
+│  • Recommend log transform for skewed distributions         │
+│  • Recommend normalization/standardization                  │
+│                                                             │
+│  Technology: heuristic rules on DataProfile output          │
+│  LLM role: explain why each transformation helps            │
+│  Output: List[TransformationSuggestion] with preview data   │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 6: STATISTICAL ANALYSIS AGENT                        │
+│  Role: Deeper statistical insights for data quality         │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Distribution analysis per column (normal, skewed, etc.)  │
+│  • Correlation matrix — flag high correlations (>0.9)       │
+│  • Multicollinearity detection (VIF scores)                 │
+│  • Data leakage detection (correlation with target >0.99)   │
+│  • Suggest hypothesis tests appropriate to the data type    │
+│  • Detect time series patterns (if date column exists)      │
+│  • Detect class imbalance if target column identified       │
+│                                                             │
+│  Technology: scipy, statsmodels, sklearn — 100% deterministic│
+│  LLM role: translate statistical findings to plain English  │
+│  Output: StatisticalReport merged into the overall plan     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 7: ML READINESS AGENT                                │
+│  Role: Assess whether the dataset is ready for modeling     │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Check all columns are numeric or encoded                 │
+│  • Check no missing values remain                           │
+│  • Check target column is defined and balanced              │
+│  • Detect feature columns with near-zero variance           │
+│  • Score overall ML readiness (0–100%)                      │
+│  • Recommend feature engineering opportunities              │
+│  • Flag potential data leakage columns                      │
+│  • Suggest train/test split strategy                        │
+│                                                             │
+│  Technology: sklearn checks, pandas dtypes                  │
+│  LLM role: generate the "ML Readiness Report" narrative     │
+│  Output: MLReadinessScore + blocking issues list            │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 8: VALIDATION AGENT                                  │
+│  Role: Post-execution quality gate                          │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • After every approved step is executed, re-profile data   │
+│  • Verify the action had the expected effect                │
+│  • Flag if a cleaning step introduced NEW problems          │
+│  • Compare before/after statistics (row count, null count)  │
+│  • Confirm no columns were accidentally dropped             │
+│  • Detect if imputation changed the distribution too much   │
+│  • Generate diff summary: "X nulls filled, Y rows removed"  │
+│                                                             │
+│  Technology: pandas compare, statistical diff tests         │
+│  LLM role: write the validation summary in plain English    │
+│  Output: ValidationResult per step (pass/warn/fail)        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 9: VISUALIZATION AGENT                               │
+│  Role: Auto-select and generate the most useful charts      │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Based on column types, auto-suggest relevant charts      │
+│  • Numeric columns → histogram + box plot                   │
+│  • Categorical columns → bar chart of value counts          │
+│  • Two numeric columns → scatter plot                       │
+│  • Many numeric columns → correlation heatmap               │
+│  • Date + numeric → line chart                              │
+│  • Missing pattern → heatmap                                │
+│  • Pre/post cleaning comparison charts                      │
+│  • Auto-embed top 3–5 charts into the Plan View             │
+│                                                             │
+│  Technology: existing viz.py Plotly backend                 │
+│  LLM role: write the chart title and one-line insight       │
+│  Output: List[ChartSpec] embedded in the approval plan      │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  AGENT 10: REPORT AGENT                                     │
+│  Role: Compile everything into a human-readable document    │
+├─────────────────────────────────────────────────────────────┤
+│  Responsibilities:                                          │
+│  • Triggered automatically after execution completes        │
+│  • Compile: profile, issues found, decisions made,          │
+│    approvals/rejections, before/after stats, charts         │
+│  • Generate executive summary paragraph (LLM-written)       │
+│  • Generate audit trail (deterministic — all actions logged)│
+│  • Export: PDF, Markdown, JSON, CSV of cleaned data         │
+│  • Include confidence scores and reasoning for each step    │
+│                                                             │
+│  Technology: existing reports.py + ReportLab                │
+│  LLM role: executive summary, section introductions         │
+│  Output: Complete report downloadable in multiple formats   │
+└─────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 4 — HUMAN-IN-THE-LOOP WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Full Execution Flow
+────────────────────
+
+  PHASE 0: UPLOAD
+  ───────────────
+  User uploads file or connects database.
+  System immediately shows basic stats (rows, cols, types).
+  A prominent button: [ Analyze with AI Agent ]
+  Optional: User types a goal — "Prepare for churn prediction"
+
+  PHASE 1: AGENT ANALYSIS  (background, ~5–15 seconds)
+  ───────────────────────────────────────────────────────
+  Progress indicator shows which agent is running:
+    ✓ Profiling dataset...
+    ✓ Detecting anomalies...
+    ✓ Building cleaning strategy...
+    ✓ Running statistical analysis...
+    ✓ Checking ML readiness...
+    ⟳ Generating recommendations...
+
+  All sub-agents run in parallel where possible.
+  Results aggregated by Orchestrator.
+  LLM generates explanation text for each recommendation.
+
+  PHASE 2: PLAN PRESENTATION  (the "Approval Queue")
+  ────────────────────────────────────────────────────
+  A dedicated "Agent Plan" page/modal appears:
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  🤖 AGENT ANALYSIS COMPLETE                              │
+  │  "I analyzed your dataset (1,200 rows × 34 columns).    │
+  │   I found 12 issues across 3 severity levels."          │
+  │                                                          │
+  │  [ Approve All ]  [ Reject All ]  [ Review Individually] │
+  └──────────────────────────────────────────────────────────┘
+
+  Then each issue card (sorted by severity):
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  ⚠ ISSUE 1 of 12   [HIGH SEVERITY]           #ISSUE-001 │
+  │                                                          │
+  │  Column: `income`                                        │
+  │  Problem: 234 missing values (19.5% of rows)            │
+  │                                                          │
+  │  Recommended Action:                                     │
+  │  Fill with MEDIAN imputation (median = $52,400)         │
+  │                                                          │
+  │  Confidence: ████████░░  82%                            │
+  │                                                          │
+  │  Reason: Column is numeric and moderately skewed        │
+  │  (skewness = 1.4). Median is more robust than mean      │
+  │  for skewed distributions. Missing rate (19.5%) is      │
+  │  within safe imputation range.                          │
+  │                                                          │
+  │  Preview: 234 rows will be updated. Distribution will   │
+  │  shift from mean $51,100 → $52,400.                     │
+  │                                                          │
+  │  [ ✓ Approve ]  [ ✗ Reject ]  [ ✎ Modify Method ]      │
+  │                                                          │
+  │  Other options: Mean │ KNN │ Forward Fill │ Drop Column  │
+  └──────────────────────────────────────────────────────────┘
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  🔴 ISSUE 2 of 12  [CRITICAL]                 #ISSUE-002 │
+  │                                                          │
+  │  Problem: 89 exact duplicate rows found                  │
+  │                                                          │
+  │  Recommended Action: Remove all 89 duplicates           │
+  │  (keep first occurrence)                                │
+  │                                                          │
+  │  Confidence: ██████████  97%                            │
+  │                                                          │
+  │  [ ✓ Approve ]  [ ✗ Reject ]  [ 👁 Preview Rows ]      │
+  └──────────────────────────────────────────────────────────┘
+
+  PHASE 3: HUMAN REVIEW
+  ──────────────────────
+  User can:
+    • Approve all at once                 → queues all steps
+    • Reject all                          → discards plan
+    • Approve individually                → queues that step
+    • Reject individually                 → removes from queue
+    • Modify parameters (e.g. change      → updates step config
+      imputation method, adjust threshold)
+    • Ask a question about a step         → AI chat answers it
+    • Reorder steps                       → drag-and-drop queue
+
+  PHASE 4: EXECUTION QUEUE
+  ─────────────────────────
+  After approvals, a "Cleaning Queue" panel shows:
+
+    Step 1: Fill `income` nulls (median)      [APPROVED] ✓
+    Step 2: Remove 89 duplicate rows          [APPROVED] ✓
+    Step 3: Convert `age` to integer          [REJECTED] ✗
+    Step 4: Normalize `salary` column         [MODIFIED] ✎
+    Step 5: Encode `gender` column            [PENDING]  ○
+
+    [ ▶ Execute Approved Steps ]
+
+  PHASE 5: EXECUTION + VALIDATION
+  ─────────────────────────────────
+  Each step runs sequentially.
+  After EACH step, Validation Agent checks the result.
+  Live progress log:
+
+    ✓ Step 1 complete — 234 nulls filled. Distribution: OK.
+    ✓ Step 2 complete — 89 rows removed. 1,111 rows remain.
+    ✗ Step 3 skipped (rejected by user)
+    ✓ Step 4 complete — salary normalized (min-max). OK.
+    ○ Step 5 waiting for approval...
+
+  PHASE 6: REPORT
+  ────────────────
+  Report Agent compiles the full audit trail automatically.
+  Download: [ PDF Report ]  [ CSV Data ]  [ JSON Log ]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 5 — AGENT COMMUNICATION MODEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data Structures
+────────────────
+
+  DataProfile (output of Profiling Agent):
+  {
+    "row_count": 1200,
+    "col_count": 34,
+    "columns": {
+      "income": {
+        "dtype": "float64",
+        "null_count": 234,
+        "null_pct": 19.5,
+        "mean": 51100, "median": 52400, "skewness": 1.4,
+        "has_outliers": true, "outlier_count": 12
+      },
+      ...
+    },
+    "duplicate_row_count": 89,
+    "constant_columns": ["flag_col"],
+    "high_cardinality_columns": ["customer_id"],
+    "date_columns": ["created_at"],
+    "suggested_target_column": "churn"
+  }
+
+  CleaningRecommendation (output of Cleaning Strategy Agent):
+  {
+    "issue_id": "ISSUE-001",
+    "severity": "HIGH",
+    "column": "income",
+    "issue_type": "MISSING_VALUES",
+    "problem_description": "234 missing values (19.5%)",
+    "recommended_action": "IMPUTE_MEDIAN",
+    "action_params": { "method": "median", "value": 52400 },
+    "confidence": 0.82,
+    "confidence_reasoning": "Skewed numeric column, safe range",
+    "alternatives": ["IMPUTE_MEAN", "IMPUTE_KNN", "DROP_COLUMN"],
+    "preview": { "rows_affected": 234, "dist_shift_pct": 2.3 },
+    "llm_explanation": "I recommend median imputation because...",
+    "status": "PENDING"   // PENDING | APPROVED | REJECTED | MODIFIED
+  }
+
+  ApprovalRecord (created when user acts):
+  {
+    "issue_id": "ISSUE-001",
+    "decision": "APPROVED",      // or REJECTED / MODIFIED
+    "modified_params": null,     // filled if user changed method
+    "decided_at": "2025-12-15T14:32:00",
+    "decided_by": "user"
+  }
+
+  ExecutionResult (output of execution step):
+  {
+    "issue_id": "ISSUE-001",
+    "status": "SUCCESS",
+    "rows_affected": 234,
+    "before_stats": { "null_count": 234 },
+    "after_stats": { "null_count": 0 },
+    "validation_passed": true,
+    "validation_notes": "Distribution shift 2.3% — within safe range"
+  }
+
+Agent Communication Pattern:
+  • Agents communicate via in-memory Python objects (same process)
+  • Each agent returns a typed result object
+  • Orchestrator assembles them in order
+  • Frontend polls a /api/agent/status endpoint via SSE (Server-Sent Events)
+    for real-time progress updates during analysis
+  • Approval decisions sent via POST /api/agent/decide
+  • Execution triggered by POST /api/agent/execute
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 6 — CONFIDENCE SCORE CALCULATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Confidence scores are ALWAYS calculated deterministically.
+The LLM never assigns or modifies a confidence score.
+
+Formula (weighted factors, 0.0–1.0):
+
+  MISSING VALUE IMPUTATION CONFIDENCE:
+  ┌────────────────────────────────────────────────┐
+  │  base_score = 0.80                             │
+  │  + 0.10 if null_pct < 5%  (very safe)         │
+  │  + 0.05 if null_pct < 15% (safe)              │
+  │  - 0.10 if null_pct > 30% (risky)             │
+  │  - 0.05 if skewness > 2.0 (mean inappropriate)│
+  │  + 0.05 if method == 'median' and skewed       │
+  │  + 0.05 if column has no outliers              │
+  └────────────────────────────────────────────────┘
+
+  OUTLIER REMOVAL CONFIDENCE:
+  ┌────────────────────────────────────────────────┐
+  │  base_score = 0.70                             │
+  │  + 0.15 if z_score > 4.0  (extreme outlier)   │
+  │  + 0.10 if consistent across 2+ methods        │
+  │  - 0.20 if outlier_pct > 5% (too many)        │
+  │  - 0.10 if column is a known ID field          │
+  └────────────────────────────────────────────────┘
+
+  DUPLICATE REMOVAL CONFIDENCE:
+  ┌────────────────────────────────────────────────┐
+  │  Always 0.95+ for exact row duplicates         │
+  │  0.60–0.80 for fuzzy/near-duplicates           │
+  │  Adjusted down if duplicates are >20% of data  │
+  └────────────────────────────────────────────────┘
+
+  TYPE CONVERSION CONFIDENCE:
+  ┌────────────────────────────────────────────────┐
+  │  base_score = 0.85                             │
+  │  + 0.10 if 100% of values parse correctly      │
+  │  - 0.30 if any values fail parsing             │
+  │  - 0.10 if target type loses precision         │
+  └────────────────────────────────────────────────┘
+
+Display rules:
+  0.90–1.00 → ████████████ "Very High — safe to approve"
+  0.75–0.89 → ██████████░░ "High — recommended"
+  0.60–0.74 → ████████░░░░ "Medium — review carefully"
+  0.40–0.59 → ██████░░░░░░ "Low — consider alternatives"
+  < 0.40    → ████░░░░░░░░ "Very Low — manual review advised"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 7 — LLM USAGE POLICY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHERE the LLM IS used:
+  ✓ Writing the natural language explanation for each issue
+  ✓ Generating the overall analysis summary paragraph
+  ✓ Answering user questions about a specific recommendation
+  ✓ Generating the executive summary section of reports
+  ✓ Translating statistical findings into plain English
+  ✓ Suggesting column name improvements
+  ✓ Providing cleaning methodology documentation
+
+WHERE the LLM is NOT used (deterministic only):
+  ✗ Deciding whether a value is an outlier
+  ✗ Calculating any threshold, percentage, or statistic
+  ✗ Assigning confidence scores
+  ✗ Selecting which columns to drop
+  ✗ Writing SQL queries for database operations
+  ✗ Converting data types
+  ✗ Choosing imputation methods (rule engine does this)
+  ✗ Deciding what counts as a duplicate
+
+Anti-Hallucination Safeguards:
+  • All LLM prompts include actual computed statistics:
+    "The column `income` has 234 null values (19.5% of 1200 rows),
+     median = 52400, skewness = 1.4. Write a 2-sentence explanation
+     of why median imputation is appropriate here."
+  • LLM is NEVER asked to inspect raw data rows
+  • LLM explanations are shown separately from computed facts
+  • Computed stats are always shown numerically alongside the text
+  • User can always see the "source" (algorithm vs LLM)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 8 — AGENT MEMORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session Memory (in-memory, cleared on session end):
+  • Current DataProfile for this dataset
+  • All CleaningRecommendations and their status
+  • All ApprovalRecords (what the user approved/rejected)
+  • All ExecutionResults
+  • Undo/redo stack (already exists in current code)
+  • Conversation history with AI Assistant
+
+Long-term Memory (optional, stored in DB per user account):
+  • Cleaning preferences by dataset type
+    e.g. "User always prefers KNN over median imputation"
+  • Columns the user always rejects dropping
+  • Past datasets analyzed (hashed name + summary)
+  • Past cleaning sessions (audit trail for compliance)
+  • User-defined rules: "age column is never negative"
+  • Preferred chart types per data type
+
+When to use long-term memory:
+  • Only if user account system exists
+  • Fetch only the preferences relevant to current dataset type
+  • Never auto-apply — always show as "Based on your preference..."
+  • Let user override in every session
+
+Session-only is sufficient for MVP.
+Long-term memory is a v2 feature.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 9 — SAFETY SAFEGUARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Accidental Deletion Prevention:
+  • EVERY destructive action requires explicit approval — no exceptions
+  • Show exact row/column count that will be affected BEFORE execution
+  • Undo is always available immediately after any step
+  • The original uploaded file is NEVER modified — always work on a copy
+  • A snapshot of the dataset is saved before each batch of approvals
+
+Wrong Transformation Prevention:
+  • Preview the result of every transformation before execution
+  • Show before/after statistics side by side
+  • Validation Agent re-checks after every step
+  • If validation fails: pause execution, alert user, require re-approval
+
+Hallucinated Recommendations Prevention:
+  • All issue detection is 100% algorithmic
+  • LLM explanations are clearly labelled "AI explanation"
+  • Computed statistics shown separately from LLM text
+  • If LLM API is down: system still works — explanations shown as empty,
+    deterministic recommendations still presented
+
+Unsafe SQL Prevention:
+  • All SQL operations are parameterized — no raw string injection
+  • SQL preview shown before execution
+  • Only SELECT allowed in the connector (import phase) by default
+  • No DDL (DROP, ALTER, TRUNCATE) ever executed from the app
+
+Data Type Conversion Safety:
+  • Dry-run conversion first — count how many values fail
+  • If >0 failures: show sample of failing values, ask user how to handle
+  • Always create a backup of the original column before conversion
+
+Column Loss Prevention:
+  • Validation Agent verifies column count after every step
+  • Alert if any column unexpectedly disappears
+  • Column drop is always a separate explicit step, never a side effect
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 10 — RECOMMENDED TECHNOLOGIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backend:
+  FastAPI              Already in use — keep it
+  pandas / numpy       Already in use — keep it
+  scikit-learn         Already in use — keep it
+  Groq API             Already in use — keep it (llama-3.1-8b-instant)
+  asyncio              Use for parallel agent execution
+  SSE (Server-Sent)    For real-time progress streaming to frontend
+  SQLite or Redis      For session state / agent memory store
+  Pydantic v2          For strict typing of all agent data structures
+
+Frontend:
+  React + TypeScript   Already in use — keep it
+  TanStack Query       Recommended for polling/caching agent status
+  Zustand              Recommended for approval queue state management
+  Framer Motion        For smooth progress animations in agent workflow
+  Plotly               Already in use — for embedded chart previews
+
+Agent Framework Options:
+  Option A: Custom Orchestrator (recommended for MVP)
+    Pure Python class that calls sub-agent functions sequentially.
+    Simple, debuggable, no external dependencies.
+    Sufficient for all features described in this document.
+
+  Option B: LangGraph (for v2)
+    Graph-based agent orchestration.
+    Supports stateful multi-step agents with human interrupts.
+    Better for complex branching workflows.
+
+  Option C: CrewAI (for v2)
+    Multi-agent framework with role-based agents.
+    Higher abstraction — less control over data decisions.
+    Risk: over-reliance on LLM for data decisions (avoid).
+
+Recommendation: Start with Option A (custom Python orchestrator).
+  It gives you full control, is easy to debug, and can be migrated
+  to LangGraph later if needed.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 11 — USER EXPERIENCE DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The experience should feel like working with a senior analyst
+who respects your final authority.
+
+Navigation Changes:
+  Current:  User browses pages manually
+  New:      A prominent "AGENT" mode button at the top of sidebar
+
+Agent Workspace Page (new, central):
+  Left panel:    Dataset stats + column list
+  Center panel:  Issue cards (the approval queue)
+  Right panel:   AI chat (context-aware to the current issue card)
+
+Issue Card Design Principles:
+  • Visual severity badge: 🔴 Critical / 🟡 High / 🟢 Medium / ⚪ Low
+  • Confidence bar visible immediately without needing to expand
+  • One-click approve/reject — minimum friction for clear decisions
+  • "Modify" expands inline — no modal, no new page
+  • "Preview" shows a mini table diff or chart inline in the card
+  • User can ask "Why?" and the AI explains just that specific issue
+  • Dismissed/rejected cards move to a "Rejected" section (not deleted)
+
+Execution Progress Panel:
+  • Shows each step completing in real time
+  • Checkmarks appear as steps succeed
+  • Expandable log per step (for technical users)
+  • Clearly shows what was NOT done (rejected steps)
+  • Total rows cleaned / removed / modified shown at the end
+
+The "undo last step" button is always visible during execution.
+
+Tone of AI communication:
+  ✓ "I found 3 columns with more than 15% missing values."
+  ✓ "I recommend removing these 89 duplicate rows."
+  ✗ "I think maybe you should consider potentially removing..."
+  ✗ "There might be some possible missing values."
+  The agent speaks clearly and confidently about facts,
+  while deferring all decisions to the user.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 12 — SCALABILITY ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Plugin System (future):
+  Each agent implements an AgentBase interface:
+  {
+    analyze(profile: DataProfile) → List[Recommendation]
+    explain(rec: Recommendation, stats: dict) → str  # LLM call
+    execute(rec: Recommendation, df: DataFrame) → DataFrame
+    validate(before: DataFrame, after: DataFrame) → ValidationResult
+  }
+
+  Third-party agents can be registered at startup:
+    app.register_agent(MyCustomCleaningAgent())
+
+  This makes the system open to community extensions.
+
+MCP (Model Context Protocol) Integration:
+  Future: Each agent can expose an MCP tool definition.
+  External LLM clients (Claude Desktop, etc.) could invoke
+  RenvoAI agents as tools. Endpoints already use REST conventions
+  compatible with MCP tool schemas.
+
+Task Queue (for large datasets):
+  For datasets >100k rows, move agent analysis to background:
+    POST /api/agent/analyze → returns job_id
+    GET  /api/agent/status/{job_id} → SSE stream of progress
+  Use Celery + Redis or FastAPI BackgroundTasks for v1.
+  For v2: consider Temporal or Prefect for durable workflows.
+
+Multi-user:
+  Each session already has session_id.
+  Agent state is session-scoped → multi-user ready from day 1.
+  For persistence: move session state from memory to Redis.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 13 — RISKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Risk 1: LLM Hallucination in Explanations
+  Mitigation: LLM only writes explanations, never makes decisions.
+  All numbers in explanations are injected from computed stats.
+
+Risk 2: Analysis Latency (agent runs take 10–30 seconds)
+  Mitigation: Streaming progress via SSE, parallel sub-agents,
+  skeleton UI while waiting, cache profile results.
+
+Risk 3: Too Many Issue Cards (analysis finds 50+ issues)
+  Mitigation: Group issues by severity; collapse low-severity ones
+  by default; offer "Approve all High confidence items" button.
+
+Risk 4: User Approves Everything Blindly
+  Mitigation: Show clear before/after previews; high-impact actions
+  (drop column, remove >10% of rows) require a typed confirmation.
+
+Risk 5: Analysis Misses Important Issues
+  Mitigation: Always allow manual use of existing pages.
+  Agent is a helper, not a replacement for manual inspection.
+
+Risk 6: Memory Store Grows Large Over Many Sessions
+  Mitigation: Session memory is always cleared. Long-term memory
+  stores only preference metadata, not raw data.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 14 — BENEFITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For data analysts:
+  • Goes from hours of manual page-by-page inspection to minutes
+  • Nothing is missed — agent checks everything systematically
+  • Decisions are documented automatically (audit trail)
+  • Less cognitive load — agent presents options, human chooses
+
+For organizations:
+  • Compliance: every cleaning decision is logged with reasoning
+  • Reproducibility: JSON plan can be re-run on similar datasets
+  • Onboarding: junior analysts guided by agent recommendations
+
+Competitive advantage:
+  • Most tools are "black box" — clean and hope for the best
+  • RenvoAI makes every cleaning decision transparent and reversible
+  • The Human-in-the-Loop model is the responsible AI standard
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 15 — ROADMAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MVP — Phase 1  (Build First)
+─────────────────────────────
+  Week 1–2: Orchestrator + Profiling Agent
+    • backend/agents/orchestrator.py
+    • backend/agents/profiler.py
+    • New endpoint: POST /api/agent/analyze
+    • Returns: DataProfile + initial issue list
+
+  Week 3–4: Cleaning Strategy + Anomaly Agent
+    • backend/agents/cleaning_strategy.py
+    • backend/agents/anomaly_agent.py
+    • Confidence score calculator module
+    • Full recommendation list with priorities
+
+  Week 5–6: Approval Queue UI
+    • New frontend page: AgentWorkspace.tsx
+    • Issue card component with approve/reject/modify
+    • POST /api/agent/decide endpoint
+    • Approval state management (Zustand or useState)
+
+  Week 7–8: Execution + Validation Agent
+    • backend/agents/validator.py
+    • Execution loop: run approved steps via existing routers
+    • SSE progress stream: GET /api/agent/stream/{session_id}
+    • Live execution log in frontend
+
+  Week 9: Integration + Polish
+    • Wire Visualization Agent (auto-chart in issue cards)
+    • Wire Report Agent (auto-generate report after execution)
+    • End-to-end testing with real datasets
+
+V2 — Phase 2  (After MVP)
+───────────────────────────
+  • Statistical Analysis Agent (correlations, leakage, VIF)
+  • ML Readiness Agent with scoring dashboard
+  • Transformation Agent (feature engineering suggestions)
+  • Long-term memory (user preference store)
+  • Reusable plan templates (save and re-apply to similar datasets)
+  • Background job queue (for large datasets)
+  • LangGraph migration for complex branching workflows
+
+V3 — Phase 3  (Future Vision)
+───────────────────────────────
+  • MCP tool exposure (use RenvoAI from Claude Desktop, etc.)
+  • Multi-dataset analysis (compare two versions of a dataset)
+  • Plugin API (third-party custom agents)
+  • Natural language goal input ("make this ready for XGBoost")
+  • Scheduled cleaning (run agent on new data drops automatically)
+  • Team collaboration (multiple users reviewing the same plan)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 16 — FILES TO CREATE (Implementation Map)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+New backend files:
+  backend/agents/__init__.py
+  backend/agents/orchestrator.py      ← Orchestrator Agent
+  backend/agents/profiler.py          ← Data Profiling Agent
+  backend/agents/cleaning_strategy.py ← Cleaning Strategy Agent
+  backend/agents/anomaly_agent.py     ← Anomaly Detection Agent
+  backend/agents/validator.py         ← Validation Agent
+  backend/agents/confidence.py        ← Confidence score calculator
+  backend/agents/memory.py            ← Session memory store
+  backend/routers/agent.py            ← New API endpoints
+
+New API endpoints:
+  POST /api/agent/analyze             ← Start full analysis
+  GET  /api/agent/plan                ← Get current plan/recommendations
+  POST /api/agent/decide              ← Submit approval/rejection
+  POST /api/agent/execute             ← Run approved steps
+  GET  /api/agent/stream/{sid}        ← SSE progress stream
+  GET  /api/agent/result              ← Final execution summary
+
+New frontend files:
+  frontend/src/pages/AgentWorkspace.tsx    ← Main agent page
+  frontend/src/components/IssueCard.tsx    ← Approval card component
+  frontend/src/components/ApprovalQueue.tsx← Queue panel
+  frontend/src/components/AgentProgress.tsx← Live progress
+  frontend/src/api/agent.ts               ← API client for agent
+
+Existing files to update:
+  backend/main.py                     ← Register agent.py router
+  frontend/src/App.tsx                ← Add /agent route
+  frontend/src/components/Sidebar.tsx ← Add "Agent" nav item
+
+================================================================
+  END OF DOCUMENT
+================================================================
