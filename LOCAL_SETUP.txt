@@ -36,19 +36,11 @@ Get one free at: https://console.groq.com/
     python3 -m venv venv
     source venv/bin/activate
 
-  Install Python dependencies:
+  Install all Python dependencies from requirements.txt:
 
-    pip install fastapi uvicorn[standard] python-multipart
-    pip install numpy==1.26.4 pandas scipy==1.11.4
-    pip install scikit-learn==1.2.2 imbalanced-learn==0.10.1 statsmodels==0.14.2
-    pip install matplotlib seaborn plotly
-    pip install openpyxl pillow reportlab jinja2
-    pip install groq pymysql psycopg2-binary SQLAlchemy
+    pip install -r requirements.txt
 
-  Or install everything from the requirements file:
-
-    pip install -r backend/requirements.txt
-    pip install fastapi uvicorn[standard] python-multipart
+  That single command installs everything the app needs.
 
 
 ================================================================
@@ -162,15 +154,15 @@ Get one free at: https://console.groq.com/
   ERROR: ModuleNotFoundError for any package
     -> Make sure your virtual environment is activated (you should
        see (venv) at the start of your terminal prompt).
-    -> Re-run the pip install commands.
+    -> Re-run: pip install -r requirements.txt
 
   ERROR: "GROQ_API_KEY not set" in AI Assistant
     -> Set the environment variable as described in Step 3.
     -> The key must be set in the SAME terminal you run uvicorn from.
 
   PDF generation fails
-    -> Make sure reportlab>=4.0 is installed:
-       pip install "reportlab>=4.0"
+    -> Make sure reportlab is installed correctly:
+       pip install reportlab==5.0.0
 
   Charts not loading (Plotly)
     -> The charts page loads Plotly from a CDN.
@@ -182,31 +174,50 @@ Get one free at: https://console.groq.com/
 
 
 ================================================================
+  DEPENDENCIES (requirements.txt)
+================================================================
+
+  All dependencies are pinned to exact versions for reproducibility.
+  The requirements.txt in the project root covers everything:
+
+  Web Framework:      fastapi, uvicorn, python-multipart
+  Data Processing:    numpy, pandas
+  Statistics & ML:    scipy, scikit-learn, imbalanced-learn, statsmodels
+  Visualization:      matplotlib, seaborn, plotly
+  File Support:       openpyxl, pillow
+  Reporting:          reportlab, jinja2
+  AI:                 groq
+  Database:           pymysql, psycopg2-binary, sqlalchemy
+
+
+================================================================
   PROJECT STRUCTURE (for reference)
 ================================================================
 
+  requirements.txt     — All Python dependencies (install this)
+
   backend/
-    main.py              — FastAPI entry point
-    routers/             — API route handlers
-      upload.py          — File upload
-      dataset.py         — Dataset operations
-      anomaly.py         — Anomaly & duplicate detection
-      transform.py       — Data transformation
-      columns.py         — Column analysis
-      clean.py           — Cleaning wizard
-      hypothesis.py      — Hypothesis testing
-      balancer.py        — Data balancer
-      viz.py             — Visualization
-      reports.py         — PDF / CSV / JSON report generation
-      ai.py              — Groq AI assistant
-      config.py          — Config import/export
-      connect.py         — MySQL / Supabase connectors
+    main.py            — FastAPI entry point
+    routers/           — API route handlers
+      upload.py        — File upload
+      dataset.py       — Dataset operations
+      anomaly.py       — Anomaly & duplicate detection
+      transform.py     — Data transformation
+      columns.py       — Column analysis
+      clean.py         — Cleaning wizard
+      hypothesis.py    — Hypothesis testing
+      balancer.py      — Data balancer
+      viz.py           — Visualization
+      reports.py       — PDF / CSV / JSON report generation
+      ai.py            — Groq AI assistant
+      config.py        — Config import/export
+      connect.py       — MySQL / Supabase connectors
 
   frontend/
     src/
-      pages/             — One file per page/section
-      components/        — Shared UI components
-      api/               — API client functions
-    dist/                — Production build (served by FastAPI)
+      pages/           — One file per page/section
+      components/      — Shared UI components
+      api/             — API client functions
+    dist/              — Production build (served by FastAPI)
 
 ================================================================
